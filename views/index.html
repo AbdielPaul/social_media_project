@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Media App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/M00976018/css/styles.css">
+
+</head>
+<body>
+    <!-- Instagram-Style Navbar -->
+    <nav class="navbar navbar-light bg-light border-bottom py-2">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <a class="navbar-brand" href="#" onclick="app.loadPage('homepage')">
+                <!-- <img src="/images/logo.png" alt="Logo" style="height: 35px;"> -->
+            </a>
+            <ul class="navbar-nav flex-row align-items-center ms-auto">
+                <li class="nav-item mx-2">
+                    <a href="#" class="nav-link" onclick="app.loadPage('homepage')"><i class="bi bi-house-door-fill"></i></a>
+                </li>
+                <li class="nav-item mx-2">
+                    <a href="#" class="nav-link" onclick="app.loadPage('feed')"><i class="bi bi-compass"></i></a>
+                </li>
+                <li class="nav-item mx-2">
+                    <a href="#" class="nav-link" onclick="app.loadPage('profile')"><i class="bi bi-person-circle"></i></a>
+                </li>
+                <li class="nav-item mx-2" id="login-link">
+                    <a href="#" class="nav-link" onclick="app.loadPage('login')"><i class="bi bi-box-arrow-in-right"></i></a>
+                </li>
+                <li class="nav-item mx-2" id="logout-link" style="display: none;">
+                    <a href="#" class="nav-link" onclick="app.logout()"><i class="bi bi-box-arrow-right"></i></a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <div id="content" class="container mt-5">
+        <!-- Dynamic content will be loaded here -->
+    </div>
+
+    <!-- Bootstrap Icons and JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="/M00976018/js/main.js"></script>
+</body>
+</html>
