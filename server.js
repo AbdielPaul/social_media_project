@@ -4,13 +4,14 @@ const path = require('path');
 const multer = require('multer');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken'); // JWT for authentication
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const port = 8080;
 
 // MongoDB connection
 const uri = "mongodb+srv://abdielpaul:Abdiel%4024813@cluster0.ebpls.mongodb.net/?retryWrites=true&w=majority";
+
 const client = new MongoClient(uri);
 
 let db, usersCollection, postsCollection, gfs;
@@ -59,7 +60,7 @@ app.post('/M00976018/api/signup', async (req, res) => {
         const newUser = {
             username,
             email,
-            password: hashPassword(password), // Hash the password securely
+            password: hashPassword(password),
             profile: {
                 bio: '',
                 favoriteGenres: [],
@@ -104,7 +105,7 @@ app.post('/M00976018/api/login', async (req, res) => {
 
         // Create a token (JWT)
         const token = jwt.sign(
-            { userId: user._id, username: user.username }, 
+            { userId: user._id, username: user.username },
             'your-secret-key',  // Use a secret key (keep it secure)
             { expiresIn: '1h' } // Token expiration time
         );
@@ -135,6 +136,7 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+
 // User profile endpoint
 app.get('/M00976018/api/profile', authenticateToken, async (req, res) => {
     try {
@@ -150,6 +152,32 @@ app.get('/M00976018/api/profile', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('Error fetching profile:', error);
         res.status(500).json({ message: 'Error fetching profile' });
+    }
+});
+
+
+// Update user profile endpoint
+app.put('/M00976018/api/profile', authenticateToken, async (req, res) => {
+    try {
+        const updatedData = req.body;
+        const userId = req.user.userId;
+
+        // Update user profile
+        const result = await usersCollection.updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: { email: updatedData.email, profile: updatedData.profile, updatedAt: new Date() } }
+        );
+
+        if (result.modifiedCount === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const updatedUser = await usersCollection.findOne({ _id: new ObjectId(userId) });
+        const { password, ...userProfile } = updatedUser;
+        res.status(200).json(userProfile);
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ message: 'Error updating profile' });
     }
 });
 
@@ -232,3 +260,7 @@ app.get('/M00976018/*', (req, res) => {
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}/M00976018`);
 });
+
+
+
+
