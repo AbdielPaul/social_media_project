@@ -73,6 +73,10 @@ export default class Profile {
                     <h3>Edit Profile</h3>
                     <form id="profile-form">
                         <div>
+                            <label>Username: </label>
+                            <input type="text" id="username" name="username" value="${profile.username}" />
+                        </div>
+                        <div>
                             <label>Email: </label>
                             <input type="email" id="email" name="email" value="${profile.email}" />
                         </div>
@@ -82,7 +86,7 @@ export default class Profile {
                         </div>
                         <div>
                             <label>favoriteGenres: </label>
-                            <input type="text" id="favoriteGenres" name="favoriteGenres" value="${profile.favoriteGenres}" />
+                            <input type="text" id="favoriteGenres" name="favoriteGenres" value="${profile.profile.favoriteGenres}" />
                         </div>
                         
                         <div>
@@ -102,6 +106,7 @@ export default class Profile {
                 e.preventDefault();
 
                 const updatedProfile = {
+                    username: form.username.value,
                     email: form.email.value,
                     profile: {
                         bio: form.bio.value,

@@ -165,7 +165,7 @@ app.put('/M00976018/api/profile', authenticateToken, async (req, res) => {
         // Update user profile
         const result = await usersCollection.updateOne(
             { _id: new ObjectId(userId) },
-            { $set: { email: updatedData.email, profile: updatedData.profile, updatedAt: new Date() } }
+            { $set: { username :updatedData.username ,email: updatedData.email, profile: updatedData.profile, updatedAt: new Date() } }
         );
 
         if (result.modifiedCount === 0) {

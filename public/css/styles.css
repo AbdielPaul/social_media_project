@@ -7,13 +7,28 @@
 
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    padding: 20px;
+    background-color: #333;
+    color: #ffffff;
+}
+
+nav {
+    background-color: #333;
+    
+}
+
+/* navbar icon coloring */
+
+i {
+    color: #45a049;
+}
+
+input,textarea {
+    background-color: #45a049;
 }
 
 h1 {
     text-align: center;
-    color: #333;
+    color: #ffffff;
     font-size: 2rem;
     margin-bottom: 20px;
 }
@@ -29,7 +44,7 @@ form {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    background-color: #fff;
+    background-color: #45a049;
     padding: 20px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     margin-bottom: 40px;
@@ -37,11 +52,12 @@ form {
     max-width: 500px;
     margin-left: auto;
     margin-right: auto;
+    color: #333;
 }
 
 input, textarea {
     padding: 10px;
-    border: 1px solid #ccc;
+    border: 1px solid #333;
     border-radius: 4px;
     font-size: 1rem;
     width: 100%;
@@ -55,8 +71,9 @@ textarea {
 button {
     padding: 10px;
     background-color: #4CAF50;
-    color: white;
+    color: 333;
     border: none;
+    border: 1px solid #333;
     border-radius: 4px;
     font-size: 1rem;
     cursor: pointer;
@@ -65,11 +82,12 @@ button {
 
 button:hover {
     background-color: #45a049;
+
 }
 
 /* Post styling */
 .post {
-    background-color: #fff;
+    background-color: #45a049;
     padding: 20px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
@@ -83,13 +101,6 @@ button:hover {
     transform: translateY(-5px);
 }
 
-/* .post img, .post video, .post audio {
-    width: 100%;
-    height: auto;
-    object-fit: cover; 
-    border-radius: 8px;
-    margin-top: 10px;
-} */
 
 .post h3 {
     font-size: 1.5rem;
@@ -102,24 +113,11 @@ button:hover {
     color: #555;
 }
 
-/* Media-specific styles */
+
 img {
     border-radius: 8px;
 }
 
-/* video, audio {
-    border-radius: 8px;
-    max-width: 100%;
-    margin-top: 10px;
-} */
-
-/* For audio */
-/* audio {
-    width: 100%; 
-    height: 40px; 
-    margin-top: 10px; 
-    background-color: #f4f4f4;
-} */
 
 /* Optional: Style for media container in the post */
 .media-content {

@@ -122,7 +122,7 @@ export default class Homepage {
 
     render() {
         this.container.innerHTML = `
-            <h1>Homepage</h1>
+            <h1>Home</h1>
             <form id="postForm">
                 <input type="text" name="author" placeholder="Your Name" required>
                 <input type="text" name="title" placeholder="Post Title" required>
