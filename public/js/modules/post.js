@@ -1,18 +1,20 @@
 export default class Post {
     constructor(username, content, media = [], timestamp = new Date().toLocaleString()) {
-        this.username = username;
-        this.content = content;
-        this.media = media; // Array of media objects with `filename` and `type`
-        this.timestamp = timestamp;
+        this.username = username;        // Username of the post creator
+        this.content = content;          // Post content (text)
+        this.media = media;              // Array of media objects with filename and type
+        this.timestamp = timestamp;      // Timestamp of post creation (default: current time)
     }
 
     render() {
         // Render media files based on their type
         let mediaContent = this.media.map(media => {
             if (!media || !media.type) return ''; // Ensure media and type are defined
+
             const fileType = media.type.split('/')[0]; // Extract type from MIME type
-            const mediaUrl = `/M00976018/api/media/${media.filename}`; // Endpoint for fetching media
-    
+            const mediaUrl = `/M00976018/media/${media.filename}`; // Endpoint for fetching media
+
+            // Render based on the media type (image, video, audio)
             if (fileType === 'image') {
                 return `<img src="${mediaUrl}" class="img-fluid rounded mb-3" alt="Post Image">`;
             } else if (fileType === 'video') {
@@ -33,7 +35,7 @@ export default class Post {
                 return ''; // Unsupported media type
             }
         }).join('');
-    
+
         // Render the post card with the username in multiple places
         return `
             <div class="card mb-4">
@@ -55,5 +57,4 @@ export default class Post {
             </div>
         `;
     }
-    
 }

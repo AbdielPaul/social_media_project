@@ -38,7 +38,7 @@ export default class Login {
             const password = document.getElementById('signup-password').value;
 
             try {
-                const response = await fetch('/M00976018/api/signup', {
+                const response = await fetch('/M00976018/users', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, email, password }),
@@ -64,7 +64,7 @@ export default class Login {
             const password = document.getElementById('login-password').value;
 
             try {
-                const response = await fetch('/M00976018/api/login', {
+                const response = await fetch('/M00976018/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password }),
@@ -84,7 +84,7 @@ export default class Login {
                 }
 
                 // Fetch user profile using the token
-                const profileResponse = await fetch('/M00976018/api/profile', {
+                const profileResponse = await fetch('/M00976018/profile', {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${result.token}`, // Include token in the Authorization header

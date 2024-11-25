@@ -8,9 +8,15 @@ export default class Homepage {
 
     async fetchPosts() {
         try {
-            const response = await fetch('/M00976018/api/posts'); // Adjust the URL to your API endpoint
+            const response = await fetch('/M00976018/posts', {
+                credentials: 'include', // Include cookies for session management
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch posts');
+            }
+
             const postsData = await response.json();
-            console.log(postsData); // Log the fetched posts data
             this.renderPosts(postsData);
         } catch (error) {
             console.error('Error fetching posts:', error);
@@ -20,62 +26,51 @@ export default class Homepage {
 
     async addPost(event) {
         event.preventDefault();
-    
+
         // Gather data from the form
-        const username = this.getLoggedInUsername(); // Retrieve the username of the logged-in user
         const title = event.target.title.value;
         const content = event.target.content.value;
         const mediaFiles = event.target.media.files;
-    
+
         // Validate form data
-        if (!username || !title || !content) {
-            this.showError('All fields are required.');
+        if (!title || !content) {
+            this.showError('Title and content are required.');
             return;
         }
-    
-        // Retrieve JWT token from localStorage
-        const token = localStorage.getItem('token'); // Ensure this matches how you save the token
-    
-        if (!token) {
-            this.showError('You must be logged in to post.');
-            return;
-        }
-    
+
         // Prepare form data for media files
         const formData = new FormData();
-        formData.append('username', username);
         formData.append('title', title);
         formData.append('content', content);
         for (const file of mediaFiles) {
-            formData.append('media', file); // Assuming the server handles multiple files
+            formData.append('media', file);
         }
-    
+
         // Send post data to the server
         try {
-            const response = await fetch('/M00976018/api/posts', {
+            const response = await fetch('/M00976018/posts', {
                 method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${token}`, // Add the Authorization header
-                },
+                credentials: 'include', // Include session cookies
                 body: formData,
             });
-    
-            if (response.ok) {
-                // Clear the form after successful submission
-                event.target.reset();
-                // Re-fetch posts to include the new post
-                this.fetchPosts();
-            } else {
+
+            if (!response.ok) {
                 const errorData = await response.json();
                 console.error('Failed to add post:', errorData.message);
                 this.showError(errorData.message || 'Failed to add post. Please try again.');
+                return;
             }
+
+            // Clear the form after successful submission
+            event.target.reset();
+
+            // Re-fetch posts to include the new post
+            this.fetchPosts();
         } catch (error) {
             console.error('Error adding post:', error);
             this.showError('Error adding post. Please try again.');
         }
     }
-    
 
     renderPosts(posts) {
         const postsContainer = document.createElement('div');
@@ -95,14 +90,14 @@ export default class Homepage {
             // Render post content (title, content, and media)
             postElement.innerHTML = `
                 <h3>${postData.title}</h3>
-                <p> ${postData.username}</p>
+                <p><strong>${postData.username}</strong></p>
                 <p><strong>Content:</strong> ${postData.content}</p>
                 <p><strong>Posted on:</strong> ${new Date(postData.createdAt).toLocaleString()}</p>
             `;
 
             // Handle rendering of media content (images, videos, and audio)
             const mediaContent = postData.media.map(file => {
-                const fileUrl = `/M00976018/api/media/${file.filename}`;
+                const fileUrl = `/M00976018/media/${file.filename}`;
                 if (file.type.startsWith('image')) {
                     return `<img src="${fileUrl}" alt="Post media" class="post-media">`;
                 } else if (file.type.startsWith('video')) {
@@ -131,11 +126,6 @@ export default class Homepage {
             errorContainer.textContent = message;
             errorContainer.style.display = 'block';
         }
-    }
-
-    getLoggedInUsername() {
-        // Retrieve the logged-in user's username from localStorage, session, or any other method
-        return localStorage.getItem('loggedInUser'); // Adjust based on how you manage user sessions
     }
 
     render() {

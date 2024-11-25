@@ -5,7 +5,7 @@ export default class Profile {
         const token = localStorage.getItem('token'); // Assumes token is stored in localStorage
 
         try {
-            const response = await fetch('/M00976018/api/profile', {
+            const response = await fetch('/M00976018/profile', {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -29,7 +29,7 @@ export default class Profile {
         const token = localStorage.getItem('token');
 
         try {
-            const response = await fetch('/M00976018/api/profile', {
+            const response = await fetch('/M00976018/profile', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
