@@ -8,8 +8,13 @@ export default class Homepage {
 
     async fetchPosts() {
         try {
+            // Fetch posts with credentials (session cookies, including the token)
             const response = await fetch('/M00976018/posts', {
-                credentials: 'include', // Include cookies for session management
+                method: 'GET',
+                credentials: 'include', // Include session cookies (important for token-based sessions)
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`, // Include token if available
+                },
             });
 
             if (!response.ok) {
@@ -38,6 +43,13 @@ export default class Homepage {
             return;
         }
 
+        // Retrieve the token for authorization
+        const token = localStorage.getItem('token');
+        if (!token) {
+            this.showError('You must be logged in to post.');
+            return;
+        }
+
         // Prepare form data for media files
         const formData = new FormData();
         formData.append('title', title);
@@ -50,7 +62,10 @@ export default class Homepage {
         try {
             const response = await fetch('/M00976018/posts', {
                 method: 'POST',
-                credentials: 'include', // Include session cookies
+                credentials: 'include', // Include session cookies (important for token-based sessions)
+                headers: {
+                    'Authorization': `Bearer ${token}`, // Add the Authorization token in header
+                },
                 body: formData,
             });
 
@@ -78,12 +93,11 @@ export default class Homepage {
 
         posts.forEach(postData => {
             const post = new Post(
-                postData.username,
+                postData.author,
                 postData.content,
                 postData.media,
                 new Date(postData.createdAt).toLocaleString()
             );
-
             const postElement = document.createElement('div');
             postElement.className = 'post';
 
@@ -104,8 +118,10 @@ export default class Homepage {
                     return `<video controls class="post-media"><source src="${fileUrl}" type="${file.type}"></video>`;
                 } else if (file.type.startsWith('audio')) {
                     return `<audio controls class="post-media"><source src="${fileUrl}" type="${file.type}"></audio>`;
+                } else {
+                    // Fallback for unsupported or missing MIME types
+                    return `<p>Unsupported media type: ${file.type || 'unknown'}</p>`;
                 }
-                return ''; // In case the file type doesn't match any of the supported types
             }).join('');
 
             if (mediaContent) {

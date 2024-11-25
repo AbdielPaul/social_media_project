@@ -259,30 +259,27 @@ app.get('/M00976018/posts', async (req, res) => {
 });
 
 // Stream file from GridFS
-app.get('/M00976018/file/:id', async (req, res) => {
-    const fileId = req.params.id;
+app.get('/M00976018/media/:id', async (req, res) => {
+    const { id } = req.params;
 
     try {
-        const file = await gfs.find({ _id: ObjectId(fileId) }).toArray();
-
+        const file = await gfs.find({ _id: new ObjectId(id) }).toArray();
         if (!file || file.length === 0) {
             return res.status(404).json({ message: 'File not found' });
         }
 
-        const readStream = gfs.openDownloadStream(ObjectId(fileId));
-        res.set('Content-Type', file[0].contentType);
-        readStream.pipe(res);
+        gfs.openDownloadStream(new ObjectId(id)).pipe(res);
     } catch (error) {
-        console.error('Error streaming file:', error);
-        res.status(500).json({ message: 'Error streaming file' });
+        console.error('Error fetching file:', error);
+        res.status(500).json({ message: 'Error fetching file' });
     }
 });
 
-app.get('/M00976018/*', (req, res) => {
+app.get('/M00976018', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
 // Start server
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/M0076018`);
+    console.log(`Server running on http://localhost:${port}`);
 });
