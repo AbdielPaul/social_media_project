@@ -156,6 +156,7 @@ app.get('/M00976018/api/profile', authenticateToken, async (req, res) => {
 });
 
 
+
 // Update user profile endpoint
 app.put('/M00976018/api/profile', authenticateToken, async (req, res) => {
     try {
@@ -182,19 +183,20 @@ app.put('/M00976018/api/profile', authenticateToken, async (req, res) => {
 });
 
 // Create new post with optional media file
-app.post('/M00976018/api/posts', upload.single('media'), async (req, res) => {
+app.post('/M00976018/api/posts', authenticateToken, upload.single('media'), async (req, res) => {
     try {
-        const { title, content, author } = req.body;
+        const { title, content } = req.body;
+        const username = req.user.username; // Get username from the authenticated user
 
-        if (!title || !content || !author) {
-            return res.status(400).json({ message: 'Title, content, and author are required' });
+        if (!title || !content) {
+            return res.status(400).json({ message: 'Title and content are required' });
         }
 
         let media = [];
         if (req.file) {
             // Upload file to GridFS
             const uploadStream = gfs.openUploadStream(req.file.originalname, {
-                contentType: req.file.mimetype
+                contentType: req.file.mimetype,
             });
 
             uploadStream.end(req.file.buffer);
@@ -202,18 +204,18 @@ app.post('/M00976018/api/posts', upload.single('media'), async (req, res) => {
             uploadStream.on('finish', async () => {
                 media.push({
                     filename: uploadStream.id.toString(),
-                    type: req.file.mimetype
+                    type: req.file.mimetype,
                 });
 
                 // Save the post to MongoDB
-                const newPost = { title, content, author, media, createdAt: new Date() };
+                const newPost = { title, content, username, media, createdAt: new Date() };
                 await postsCollection.insertOne(newPost);
 
                 res.status(201).json({ message: 'Post created successfully', post: newPost });
             });
         } else {
             // Save the post without media
-            const newPost = { title, content, author, createdAt: new Date() };
+            const newPost = { title, content, username, createdAt: new Date() };
             await postsCollection.insertOne(newPost);
             res.status(201).json({ message: 'Post created successfully', post: newPost });
         }

@@ -12,7 +12,7 @@ export default class Post {
             if (!media || !media.type) return ''; // Ensure media and type are defined
             const fileType = media.type.split('/')[0]; // Extract type from MIME type
             const mediaUrl = `/M00976018/api/media/${media.filename}`; // Endpoint for fetching media
-
+    
             if (fileType === 'image') {
                 return `<img src="${mediaUrl}" class="img-fluid rounded mb-3" alt="Post Image">`;
             } else if (fileType === 'video') {
@@ -33,23 +33,27 @@ export default class Post {
                 return ''; // Unsupported media type
             }
         }).join('');
-
-        // Render the post card
+    
+        // Render the post card with the username in multiple places
         return `
             <div class="card mb-4">
                 <div class="card-header">
-                    <strong>${this.username}</strong>
+                    <strong>${this.username}</strong> 
                     <span class="text-muted ms-2">${this.timestamp}</span>
                 </div>
                 <div class="card-body">
-                    <p>${this.content}</p>
+                    <p><strong>${this.username}:</strong> ${this.content}</p> <!-- Username included before content -->
                     ${mediaContent}
                 </div>
                 <div class="card-footer d-flex justify-content-between">
-                    <button class="btn btn-outline-primary btn-sm">Like</button>
-                    <button class="btn btn-outline-secondary btn-sm">Comment</button>
+                    <span class="text-muted">Posted by <strong>${this.username}</strong></span> <!-- Username in footer -->
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm">Like</button>
+                        <button class="btn btn-outline-secondary btn-sm">Comment</button>
+                    </div>
                 </div>
             </div>
         `;
     }
+    
 }

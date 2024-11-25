@@ -20,49 +20,62 @@ export default class Homepage {
 
     async addPost(event) {
         event.preventDefault();
-
+    
         // Gather data from the form
-        const author = event.target.author.value;
+        const username = this.getLoggedInUsername(); // Retrieve the username of the logged-in user
         const title = event.target.title.value;
         const content = event.target.content.value;
         const mediaFiles = event.target.media.files;
-
+    
         // Validate form data
-        if (!author || !title || !content) {
+        if (!username || !title || !content) {
             this.showError('All fields are required.');
             return;
         }
-
+    
+        // Retrieve JWT token from localStorage
+        const token = localStorage.getItem('token'); // Ensure this matches how you save the token
+    
+        if (!token) {
+            this.showError('You must be logged in to post.');
+            return;
+        }
+    
         // Prepare form data for media files
         const formData = new FormData();
-        formData.append('author', author);
+        formData.append('username', username);
         formData.append('title', title);
         formData.append('content', content);
         for (const file of mediaFiles) {
             formData.append('media', file); // Assuming the server handles multiple files
         }
-
+    
         // Send post data to the server
         try {
             const response = await fetch('/M00976018/api/posts', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    Authorization: `Bearer ${token}`, // Add the Authorization header
+                },
+                body: formData,
             });
-
+    
             if (response.ok) {
                 // Clear the form after successful submission
                 event.target.reset();
                 // Re-fetch posts to include the new post
                 this.fetchPosts();
             } else {
-                console.error('Failed to add post');
-                this.showError('Failed to add post. Please try again.');
+                const errorData = await response.json();
+                console.error('Failed to add post:', errorData.message);
+                this.showError(errorData.message || 'Failed to add post. Please try again.');
             }
         } catch (error) {
             console.error('Error adding post:', error);
             this.showError('Error adding post. Please try again.');
         }
     }
+    
 
     renderPosts(posts) {
         const postsContainer = document.createElement('div');
@@ -70,7 +83,7 @@ export default class Homepage {
 
         posts.forEach(postData => {
             const post = new Post(
-                postData.author,
+                postData.username,
                 postData.content,
                 postData.media,
                 new Date(postData.createdAt).toLocaleString()
@@ -82,7 +95,7 @@ export default class Homepage {
             // Render post content (title, content, and media)
             postElement.innerHTML = `
                 <h3>${postData.title}</h3>
-                <p><strong>Author:</strong> ${postData.author}</p>
+                <p> ${postData.username}</p>
                 <p><strong>Content:</strong> ${postData.content}</p>
                 <p><strong>Posted on:</strong> ${new Date(postData.createdAt).toLocaleString()}</p>
             `;
@@ -120,11 +133,15 @@ export default class Homepage {
         }
     }
 
+    getLoggedInUsername() {
+        // Retrieve the logged-in user's username from localStorage, session, or any other method
+        return localStorage.getItem('loggedInUser'); // Adjust based on how you manage user sessions
+    }
+
     render() {
         this.container.innerHTML = `
             <h1>Home</h1>
             <form id="postForm">
-                <input type="text" name="author" placeholder="Your Name" required>
                 <input type="text" name="title" placeholder="Post Title" required>
                 <textarea name="content" placeholder="Write your post..." required></textarea>
                 <input type="file" name="media" multiple>
