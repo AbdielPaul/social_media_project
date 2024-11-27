@@ -1,5 +1,3 @@
-// modules/profile.js
-
 export default class Profile {
     async getProfile() {
         const token = localStorage.getItem('token'); // Assumes token is stored in localStorage
@@ -25,7 +23,7 @@ export default class Profile {
         }
     }
 
-    async updateProfile(profileData) {
+    async updateProfile(updatedProfileData) {
         const token = localStorage.getItem('token');
 
         try {
@@ -35,7 +33,7 @@ export default class Profile {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(profileData)
+                body: JSON.stringify(updatedProfileData)
             });
 
             if (!response.ok) {
@@ -61,14 +59,12 @@ export default class Profile {
                         <p><strong>Username:</strong> ${profile.username}</p>
                         <p><strong>Email:</strong> ${profile.email}</p>
                         <p><strong>Bio:</strong> ${profile.profile.bio}</p>
-                        <p><strong>favoriteGenres:</strong> ${profile.profile.favoriteGenres}</p>
-                        <p><strong>profilePicture:</strong> ${profile.profile.profilePicture}</p>
-                        <p><strong>followers:</strong> ${profile.profile.followers}</p>
-                        <p><strong>following:</strong> ${profile.profile.following}</p>
-                        <p><strong>playlists:</strong> ${profile.profile.playlists}</p>
-                        <p><strong>posts:</strong> ${profile.profile.posts}</p>
-
-                        
+                        <p><strong>Favorite Genres:</strong> ${profile.profile.favoriteGenres.join(', ')}</p>
+                        <p><strong>Profile Picture:</strong> ${profile.profile.profilePicture || 'Not set'}</p>
+                        <p><strong>Followers:</strong> ${profile.profile.followers.length}</p>
+                        <p><strong>Following:</strong> ${profile.profile.following.length}</p>
+                        <p><strong>Playlists:</strong> ${profile.profile.playlists.join(', ')}</p>
+                        <p><strong>Posts:</strong> ${profile.profile.posts.length}</p>
                     </div>
                     <h3>Edit Profile</h3>
                     <form id="profile-form">
@@ -85,21 +81,17 @@ export default class Profile {
                             <textarea id="bio" name="bio">${profile.profile.bio}</textarea>
                         </div>
                         <div>
-                            <label>favoriteGenres: </label>
-                            <input type="text" id="favoriteGenres" name="favoriteGenres" value="${profile.profile.favoriteGenres}" />
+                            <label>Favorite Genres (comma-separated): </label>
+                            <input type="text" id="favoriteGenres" name="favoriteGenres" value="${profile.profile.favoriteGenres.join(', ')}" />
                         </div>
-                        
                         <div>
-                            <label>playlists: </label>
-                            <input type="text" id="playlists" name="playlists" value="${profile.playlists}" />
+                            <label>Playlists (comma-separated): </label>
+                            <input type="text" id="playlists" name="playlists" value="${profile.profile.playlists.join(', ')}" />
                         </div>
-                        
                         <button type="submit">Save</button>
                     </form>
                 </div>
             `;
-
-            
 
             const form = document.getElementById('profile-form');
             form.addEventListener('submit', async (e) => {
@@ -109,19 +101,21 @@ export default class Profile {
                     username: form.username.value,
                     email: form.email.value,
                     profile: {
+                        ...profile.profile, // Preserve existing profile data
                         bio: form.bio.value,
-                        favoriteGenres: form.favoriteGenres.value,
-                        playlists: form.playlists.value,
+                        favoriteGenres: form.favoriteGenres.value.split(',').map(genre => genre.trim()),
+                        playlists: form.playlists.value.split(',').map(playlist => playlist.trim())
                     }
                 };
 
                 await this.updateProfile(updatedProfile);
                 alert('Profile updated successfully');
-                
+
                 // Optionally re-render to show updated details
                 await this.render(container);
             });
         } catch (error) {
+            console.error('Error loading or updating profile:', error);
             container.innerHTML = '<p>Error loading profile</p>';
         }
     }

@@ -8,7 +8,7 @@ class App {
         this.pages = {
             login: new Login(),
             homepage: new Homepage(document.getElementById('content')),
-            feed: new Feed(),
+            feed: new Feed(document.getElementById('content')),
             profile: new Profile(),
         };
     }

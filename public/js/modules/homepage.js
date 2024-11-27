@@ -8,12 +8,11 @@ export default class Homepage {
 
     async fetchPosts() {
         try {
-            // Fetch posts with credentials (session cookies, including the token)
             const response = await fetch('/M00976018/posts', {
                 method: 'GET',
-                credentials: 'include', // Include session cookies (important for token-based sessions)
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`, // Include token if available
+                    'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
                 },
             });
 
@@ -32,25 +31,21 @@ export default class Homepage {
     async addPost(event) {
         event.preventDefault();
 
-        // Gather data from the form
-        const title = event.target.title.value;
-        const content = event.target.content.value;
+        const title = event.target.title.value.trim();
+        const content = event.target.content.value.trim();
         const mediaFiles = event.target.media.files;
 
-        // Validate form data
         if (!title || !content) {
             this.showError('Title and content are required.');
             return;
         }
 
-        // Retrieve the token for authorization
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('loggedInUser');
         if (!token) {
             this.showError('You must be logged in to post.');
             return;
         }
 
-        // Prepare form data for media files
         const formData = new FormData();
         formData.append('title', title);
         formData.append('content', content);
@@ -58,90 +53,121 @@ export default class Homepage {
             formData.append('media', file);
         }
 
-        // Send post data to the server
         try {
             const response = await fetch('/M00976018/posts', {
                 method: 'POST',
-                credentials: 'include', // Include session cookies (important for token-based sessions)
+                credentials: 'include',
                 headers: {
-                    'Authorization': `Bearer ${token}`, // Add the Authorization token in header
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: formData,
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error('Failed to add post:', errorData.message);
                 this.showError(errorData.message || 'Failed to add post. Please try again.');
                 return;
             }
 
-            // Clear the form after successful submission
             event.target.reset();
-
-            // Re-fetch posts to include the new post
-            this.fetchPosts();
+            await this.fetchPosts();
         } catch (error) {
             console.error('Error adding post:', error);
             this.showError('Error adding post. Please try again.');
         }
     }
 
-    renderPosts(posts) {
-        const postsContainer = document.createElement('div');
-        postsContainer.className = 'posts-container';
-
-        posts.forEach(postData => {
-            const post = new Post(
-                postData.author,
-                postData.content,
-                postData.media,
-                new Date(postData.createdAt).toLocaleString()
-            );
-            const postElement = document.createElement('div');
-            postElement.className = 'post';
-
-            // Render post content (title, content, and media)
-            postElement.innerHTML = `
-                <h3>${postData.title}</h3>
-                <p><strong>${postData.username}</strong></p>
-                <p><strong>Content:</strong> ${postData.content}</p>
-                <p><strong>Posted on:</strong> ${new Date(postData.createdAt).toLocaleString()}</p>
-            `;
-
-            // Handle rendering of media content (images, videos, and audio)
-            const mediaContent = postData.media.map(file => {
-                const fileUrl = `/M00976018/media/${file.filename}`;
-                if (file.type.startsWith('image')) {
-                    return `<img src="${fileUrl}" alt="Post media" class="post-media">`;
-                } else if (file.type.startsWith('video')) {
-                    return `<video controls class="post-media"><source src="${fileUrl}" type="${file.type}"></video>`;
-                } else if (file.type.startsWith('audio')) {
-                    return `<audio controls class="post-media"><source src="${fileUrl}" type="${file.type}"></audio>`;
-                } else {
-                    // Fallback for unsupported or missing MIME types
-                    return `<p>Unsupported media type: ${file.type || 'unknown'}</p>`;
-                }
-            }).join('');
-
-            if (mediaContent) {
-                postElement.innerHTML += `<div class="media-content">${mediaContent}</div>`;
+    async toggleFollowUser(username, followButton) {
+        const isFollowing = followButton.textContent === 'Unfollow';
+        const endpoint = `/M00976018/follow/${username}`;
+        const method = isFollowing ? 'DELETE' : 'POST';
+    
+        try {
+            const response = await fetch(endpoint, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+    
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
             }
-
-            postsContainer.appendChild(postElement);
-        });
-
-        const existingPostsContainer = this.container.querySelector('.posts-section');
-        existingPostsContainer.innerHTML = ''; // Clear the container
-        existingPostsContainer.appendChild(postsContainer);
+    
+            // Toggle button text and persist state in localStorage
+            followButton.textContent = isFollowing ? 'Follow' : 'Unfollow';
+    
+            // Save follow state locally for persistence
+            const followState = JSON.parse(localStorage.getItem('followState')) || {};
+            followState[username] = !isFollowing;
+            localStorage.setItem('followState', JSON.stringify(followState));
+        } catch (error) {
+            console.error(`Error toggling follow status for ${username}:`, error);
+            this.showError(`Failed to ${isFollowing ? 'unfollow' : 'follow'} user. Please try again.`);
+        }
     }
+    
+    
+
+    renderPosts(posts) {
+    const postsContainer = document.createElement('div');
+    postsContainer.className = 'posts-container';
+
+    const followState = JSON.parse(localStorage.getItem('followState')) || {};
+
+    posts.forEach(postData => {
+        const post = new Post(
+            postData.username,
+            postData.content,
+            postData.media,
+            new Date(postData.createdAt).toLocaleString()
+        );
+
+        const postElement = document.createElement('div');
+        postElement.className = 'post';
+
+        const isFollowing = followState[postData.username] ?? postData.isFollowing;
+
+        postElement.innerHTML = `
+            <h3>${this.escapeHTML(postData.title)}</h3>
+            ${post.render()}
+            <p><strong>Author:</strong> ${this.escapeHTML(postData.username)}</p>
+            <button class="follow-btn" data-username="${postData.username}">
+                ${isFollowing ? 'Unfollow' : 'Follow'}
+            </button>
+        `;
+
+        // Add event listener for the Follow/Unfollow button
+        const followButton = postElement.querySelector('.follow-btn');
+        followButton.addEventListener('click', () =>
+            this.toggleFollowUser(postData.username, followButton)
+        );
+
+        postsContainer.appendChild(postElement);
+    });
+
+    const existingPostsContainer = this.container.querySelector('.posts-section');
+    existingPostsContainer.innerHTML = ''; // Clear the container
+    existingPostsContainer.appendChild(postsContainer);
+}
+
 
     showError(message) {
         const errorContainer = this.container.querySelector('.error-message');
         if (errorContainer) {
             errorContainer.textContent = message;
             errorContainer.style.display = 'block';
+            setTimeout(() => {
+                errorContainer.style.display = 'none';
+            }, 5000); // Auto-hide after 5 seconds
         }
+    }
+
+    escapeHTML(str) {
+        return str.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     render() {
@@ -157,11 +183,9 @@ export default class Homepage {
             <div class="posts-section"></div>
         `;
 
-        // Add an event listener to the form to handle submission
         const postForm = this.container.querySelector('#postForm');
         postForm.addEventListener('submit', (event) => this.addPost(event));
 
-        // Fetch and display posts
         this.fetchPosts();
     }
 }

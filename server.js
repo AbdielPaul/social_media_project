@@ -5,7 +5,7 @@ const multer = require('multer');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const session = require('express-session'); // Required for session management
-const jwt = require('jsonwebtoken');
+
 
 const app = express();
 const port = 8080;
@@ -37,7 +37,7 @@ app.use(express.json());
 app.use('/M00976018', express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Session configuration
+// Session configuration 
 app.use(session({
     secret: 'your-secret-key', // Replace with a strong secret key
     resave: false,
@@ -152,7 +152,7 @@ app.post('/M00976018/logout', (req, res) => {
 });
 
 // Check login status (GET /status)
-app.get('/M00976018/status', (req, res) => {
+app.get('/M00976018/login', (req, res) => {
     if (req.session && req.session.userId) {
         return res.status(200).json({ message: 'User is logged in', username: req.session.username });
     }
@@ -258,6 +258,161 @@ app.get('/M00976018/posts', async (req, res) => {
     }
 });
 
+
+// Follow another user
+app.post('/M00976018/follow/:username?', ensureLoggedIn, async (req, res) => {
+    const targetUsername = req.params.username || req.body.username;
+
+    if (!targetUsername) {
+        return res.status(400).json({ message: 'Target username is required' });
+    }
+
+    const currentUsername = req.session.username;
+
+    if (currentUsername === targetUsername) {
+        return res.status(400).json({ message: "You can't follow yourself" });
+    }
+
+    try {
+        const targetUser = await usersCollection.findOne({ username: targetUsername });
+        const currentUser = await usersCollection.findOne({ username: currentUsername });
+
+        if (!targetUser) {
+            return res.status(404).json({ message: 'Target user not found' });
+        }
+
+        // Add the target user to the current user's following list (if not already there)
+        if (!currentUser.profile.following.includes(targetUsername)) {
+            await usersCollection.updateOne(
+                { username: currentUsername },
+                { $addToSet: { 'profile.following': targetUsername } }
+            );
+        }
+
+        // Add the current user to the target user's followers list (if not already there)
+        if (!targetUser.profile.followers.includes(currentUsername)) {
+            await usersCollection.updateOne(
+                { username: targetUsername },
+                { $addToSet: { 'profile.followers': currentUsername } }
+            );
+        }
+
+        res.status(200).json({ message: `You are now following ${targetUsername}` });
+    } catch (error) {
+        console.error('Error following user:', error);
+        res.status(500).json({ message: 'Error following user' });
+    }
+});
+
+
+app.delete('/M00976018/follow/:username?', ensureLoggedIn, async (req, res) => {
+    const targetUsername = req.params.username || req.body.username;
+
+    if (!targetUsername) {
+        return res.status(400).json({ message: 'Target username is required' });
+    }
+
+    const currentUsername = req.session.username;
+
+    if (currentUsername === targetUsername) {
+        return res.status(400).json({ message: "You can't unfollow yourself" });
+    }
+
+    try {
+        const targetUser = await usersCollection.findOne({ username: targetUsername });
+        const currentUser = await usersCollection.findOne({ username: currentUsername });
+
+        if (!targetUser) {
+            return res.status(404).json({ message: 'Target user not found' });
+        }
+
+        // Remove the target user from the current user's following list (if they are there)
+        await usersCollection.updateOne(
+            { username: currentUsername },
+            { $pull: { 'profile.following': targetUsername } }
+        );
+
+        // Remove the current user from the target user's followers list (if they are there)
+        await usersCollection.updateOne(
+            { username: targetUsername },
+            { $pull: { 'profile.followers': currentUsername } }
+        );
+
+        res.status(200).json({ message: `You have unfollowed ${targetUsername}` });
+    } catch (error) {
+        console.error('Error unfollowing user:', error);
+        res.status(500).json({ message: 'Error unfollowing user' });
+    }
+});
+
+
+// Search for users by query
+app.get('/M00976018/users/search', ensureLoggedIn, async (req, res) => {
+    const query = req.query.q;
+
+    if (!query || query.trim() === '') {
+        return res.status(400).json({ message: 'Query parameter "q" is required' });
+    }
+
+    try {
+        // Perform a case-insensitive search for matching usernames or emails
+        const results = await usersCollection.find({
+            $or: [
+                { username: { $regex: query, $options: 'i' } },
+                { email: { $regex: query, $options: 'i' } }
+            ]
+        }).project({ username: 1, email: 1, 
+            'profile.bio': 1,
+            'profile.followers': 1,
+            'profile.following': 1 
+        }).toArray();
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'No users found matching your query' });
+        }
+
+        res.status(200).json(results);
+    } catch (error) {
+        console.error('Error searching for users:', error);
+        res.status(500).json({ message: 'Error searching for users' });
+    }
+});
+
+// Search for content (posts, recipes, etc.) that matches a query
+app.get('/M00976018/contents/search', ensureLoggedIn, async (req, res) => {
+    const query = req.query.q;
+
+    if (!query || query.trim() === '') {
+        return res.status(400).json({ message: 'Query parameter "q" is required' });
+    }
+
+    try {
+        // Perform a case-insensitive search for matching content in title or content fields of posts
+        const results = await postsCollection.find({
+            $or: [
+                { title: { $regex: query, $options: 'i' } },
+                { content: { $regex: query, $options: 'i' } }
+            ]
+        }).project({
+            title: 1,
+            content: 1,
+            username: 1,
+            media: 1,
+            createdAt: 1
+        }).toArray();
+
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'No content found matching your query' });
+        }
+
+        res.status(200).json(results);
+    } catch (error) {
+        console.error('Error searching for content:', error);
+        res.status(500).json({ message: 'Error searching for content' });
+    }
+});
+
+
 // Stream file from GridFS
 app.get('/M00976018/media/:id', async (req, res) => {
     const { id } = req.params;
@@ -281,5 +436,5 @@ app.get('/M00976018', (req, res) => {
 
 // Start server
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+    console.log(`Server running on http://localhost:${port}/M00976018`);
 });
