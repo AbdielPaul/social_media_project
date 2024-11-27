@@ -203,8 +203,7 @@ app.put('/M00976018/profile', ensureLoggedIn, async (req, res) => {
 });
 
 
-// Create new post with optional media file
-app.post('/M00976018/posts', ensureLoggedIn, upload.single('media'), async (req, res) => {
+app.post('/M00976018/posts', ensureLoggedIn, upload.array('media', 5), async (req, res) => {
     try {
         const { title, content } = req.body;
         const username = req.session.username; // Get username from the authenticated user
@@ -214,26 +213,28 @@ app.post('/M00976018/posts', ensureLoggedIn, upload.single('media'), async (req,
         }
 
         let media = [];
-        if (req.file) {
-            // Upload file to GridFS
-            const uploadStream = gfs.openUploadStream(req.file.originalname, {
-                contentType: req.file.mimetype,
-            });
-
-            uploadStream.end(req.file.buffer);
-
-            uploadStream.on('finish', async () => {
-                media.push({
-                    filename: uploadStream.id.toString(),
-                    type: req.file.mimetype,
+        if (req.files) {
+            for (const file of req.files) {
+                // Upload file to GridFS
+                const uploadStream = gfs.openUploadStream(file.originalname, {
+                    contentType: file.mimetype,
                 });
 
-                // Save the post to MongoDB
-                const newPost = { title, content, username, media, createdAt: new Date() };
-                await postsCollection.insertOne(newPost);
+                uploadStream.end(file.buffer);
 
-                res.status(201).json({ message: 'Post created successfully', post: newPost });
-            });
+                uploadStream.on('finish', async () => {
+                    media.push({
+                        filename: uploadStream.id.toString(),
+                        type: file.mimetype,
+                    });
+
+                    // Save the post to MongoDB
+                    const newPost = { title, content, username, media, createdAt: new Date() };
+                    await postsCollection.insertOne(newPost);
+
+                    res.status(201).json({ message: 'Post created successfully', post: newPost });
+                });
+            }
         } else {
             // Save the post without media
             const newPost = { title, content, username, createdAt: new Date() };
@@ -246,17 +247,118 @@ app.post('/M00976018/posts', ensureLoggedIn, upload.single('media'), async (req,
     }
 });
 
-
-// Fetch all posts
+// Fetch all posts with pagination
 app.get('/M00976018/posts', async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+
     try {
-        const posts = await postsCollection.find().sort({ createdAt: -1 }).toArray();
+        const posts = await postsCollection
+            .find()
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .toArray();
+
         res.status(200).json(posts);
     } catch (error) {
         console.error('Error fetching posts:', error);
         res.status(500).json({ message: 'Error fetching posts' });
     }
 });
+
+app.post('/M00976018/posts/:postId/like', ensureLoggedIn, async (req, res) => {
+    const { postId } = req.params;
+    const username = req.session.username;
+
+    if (!username) {
+        return res.status(400).json({ message: 'User is not logged in' });
+    }
+
+    try {
+        const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Increment the like count in the post document
+        const updatedPost = await postsCollection.updateOne(
+            { _id: new ObjectId(postId) },
+            { $inc: { likeCount: 1 } }  // Increment the likeCount by 1
+        );
+
+        if (updatedPost.modifiedCount === 0) {
+            return res.status(500).json({ message: 'Error liking post' });
+        }
+
+        res.status(200).json({ message: 'Post liked successfully', likeCount: post.likeCount + 1 });
+    } catch (error) {
+        console.error('Error liking post:', error);
+        res.status(500).json({ message: 'Error liking post' });
+    }
+});
+
+
+// Endpoint to add a comment to a post
+app.post('/M00976018/posts/:postId/comment', ensureLoggedIn, async (req, res) => {
+    const { postId } = req.params;
+    const { comment } = req.body; // assuming the comment is in the request body
+    const username = req.session.username;
+
+    // Check if the username exists in the session
+    if (!username) {
+        return res.status(400).json({ message: 'User is not logged in' });
+    }
+
+    // Validate the comment
+    if (!comment || comment.trim() === '') {
+        return res.status(400).json({ message: 'Comment cannot be empty' });
+    }
+
+    try {
+        const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Add the comment to the post's comments array
+        const updatedPost = await postsCollection.updateOne(
+            { _id: new ObjectId(postId) },
+            { $push: { comments: { username, comment, timestamp: new Date() } } }
+        );
+
+        if (updatedPost.modifiedCount === 0) {
+            return res.status(500).json({ message: 'Error adding comment' });
+        }
+
+        res.status(200).json({ message: 'Comment added successfully' });
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        res.status(500).json({ message: 'Error adding comment' });
+    }
+});
+
+
+// Get post with comments
+app.get('/M00976018/posts/:postId', async (req, res) => {
+    const { postId } = req.params;
+
+    try {
+        const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        res.status(200).json(post);
+    } catch (error) {
+        console.error('Error fetching post:', error);
+        res.status(500).json({ message: 'Error fetching post' });
+    }
+});
+
 
 
 // Follow another user
