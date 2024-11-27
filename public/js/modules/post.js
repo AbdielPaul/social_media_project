@@ -45,10 +45,6 @@ export default class Post {
                     <p>${this.content}</p>
                     ${mediaContent}
                 </div>
-                <div class="card-footer d-flex justify-content-between">
-                    <button class="btn btn-outline-primary btn-sm">Like</button>
-                    <button class="btn btn-outline-secondary btn-sm">Comment</button>
-                </div>
             </div>
         `;
     }

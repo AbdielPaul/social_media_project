@@ -110,54 +110,54 @@ export default class Homepage {
     
 
     // Function to fetch and render the post's comments
-fetchPostComments(postId, commentsContainer) {
-    fetch(`http://localhost:8080/M00976018/posts/${postId}`)
-        .then(response => response.json())
-        .then(post => {
-            const comments = post.comments || [];
-            commentsContainer.innerHTML = '';  // Clear the current list of comments
-            comments.forEach(comment => {
-                const commentElement = document.createElement('p');
-                // Format the comment with the username and timestamp
-                commentElement.textContent = `${comment.username}: ${comment.comment} (Posted on: ${new Date(comment.timestamp).toLocaleString()})`;
-                commentsContainer.appendChild(commentElement);  // Append comment to the container
+    fetchPostComments(postId, commentsContainer) {
+        fetch(`http://localhost:8080/M00976018/posts/${postId}`)
+            .then(response => response.json())
+            .then(post => {
+                const comments = post.comments || [];
+                commentsContainer.innerHTML = '';  // Clear the current list of comments
+                comments.forEach(comment => {
+                    const commentElement = document.createElement('p');
+                    // Format the comment with the username and timestamp
+                    commentElement.textContent = `${comment.username}: ${comment.comment} (Posted on: ${new Date(comment.timestamp).toLocaleString()})`;
+                    commentsContainer.appendChild(commentElement);  // Append comment to the container
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching comments:', error);
             });
-        })
-        .catch(error => {
-            console.error('Error fetching comments:', error);
-        });
-}
-
-// Add comment functionality
-addComment(postId, comment, commentsContainer) {
-    if (!comment.trim()) {
-        return;
     }
 
-    fetch(`http://localhost:8080/M00976018/posts/${postId}/comment`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ comment }), // Send the comment content
-        credentials: 'same-origin',
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Failed to add comment');
+    // Add comment functionality
+    addComment(postId, comment, commentsContainer) {
+        if (!comment.trim()) {
+            return;
         }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Comment added successfully', data);
-        
-        // After adding, update the comments section
-        this.fetchPostComments(postId, commentsContainer);
-    })
-    .catch(error => {
-        console.error('Error adding comment:', error);
-    });
-}
+
+        fetch(`http://localhost:8080/M00976018/posts/${postId}/comment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ comment }), // Send the comment content
+            credentials: 'same-origin',
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to add comment');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Comment added successfully', data);
+            
+            // After adding, update the comments section
+            this.fetchPostComments(postId, commentsContainer);
+        })
+        .catch(error => {
+            console.error('Error adding comment:', error);
+        });
+    }
 
     
     
@@ -230,10 +230,6 @@ addComment(postId, comment, commentsContainer) {
         existingPostsContainer.appendChild(postsContainer);
     }
     
-    
-    
-    
-
     showError(message) {
         const errorContainer = this.container.querySelector('.error-message');
         if (errorContainer) {
