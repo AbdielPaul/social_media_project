@@ -30,54 +30,40 @@ export default class Feed {
         }
     }
 
-    // async addPost(event) {
-    //     event.preventDefault();
+    async toggleFollowUser(username, followButton) {
+        const isFollowing = followButton.textContent === 'Unfollow';
+        const endpoint = isFollowing
+                ? `/M00976018/follow/${username}` // Use DELETE for unfollow
+                : `/M00976018/follow/${username}`; // Use POST for follow
+        const method = isFollowing ? 'DELETE' : 'POST';
 
-    //     const title = event.target.title.value.trim();
-    //     const content = event.target.content.value.trim();
-    //     const mediaFiles = event.target.media.files;
+        console.log('Toggling follow state for:', username, 'Method:', method);
 
-    //     if (!title || !content) {
-    //         this.showError('Title and content are required.');
-    //         return;
-    //     }
+    try {
 
-    //     const token = localStorage.getItem('loggedInUser');
-    //     if (!token) {
-    //         this.showError('You must be logged in to post.');
-    //         return;
-    //     }
+        const response = await fetch(endpoint, {
+            method,
+            credentials: 'include',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json',
+            },
+        });
 
-    //     const formData = new FormData();
-    //     formData.append('title', title);
-    //     formData.append('content', content);
-    //     for (const file of mediaFiles) {
-    //         formData.append('media', file);
-    //     }
+        
 
-    //     try {
-    //         const response = await fetch('/M00976018/posts', {
-    //             method: 'POST',
-    //             credentials: 'include',
-    //             headers: {
-    //                 'Authorization': `Bearer ${token}`,
-    //             },
-    //             body: formData,
-    //         });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
+        }
 
-    //         if (!response.ok) {
-    //             const errorData = await response.json();
-    //             this.showError(errorData.message || 'Failed to add post. Please try again.');
-    //             return;
-    //         }
-
-    //         event.target.reset();
-    //         await this.fetchPosts();
-    //     } catch (error) {
-    //         console.error('Error adding post:', error);
-    //         this.showError('Error adding post. Please try again.');
-    //     }
-    // }
+        // Update the follow button text dynamically
+        followButton.textContent = isFollowing ? 'Follow' : 'Unfollow';
+        } catch (error) {
+            console.error('Error toggling follow state:', error);
+            alert('Error updating follow state');
+        }
+    }
 
     async likePost(postId, likeButton) {
         try {
@@ -188,6 +174,9 @@ export default class Feed {
     
             const postElement = document.createElement('div');
             postElement.className = 'post';
+
+            // Determine the follow state from the post data
+            const isFollowing = postData.isFollowing;
     
             // Comments container
             const commentsContainer = document.createElement('div');
@@ -206,6 +195,9 @@ export default class Feed {
                 <h3>${this.escapeHTML(postData.title)}</h3>
                 ${post.render()}
                 <p><strong>Author:</strong> ${this.escapeHTML(postData.username)}</p>
+                <button class="follow-btn" data-username="${postData.username}">
+                    ${isFollowing ? 'Unfollow' : 'Follow'}
+                </button>
                 <button class="like-btn" data-post-id="${postData._id}">Like (${postData.likeCount})</button>
                 <form class="comment-form">
                     <input type="text" name="comment" placeholder="Write a comment..." required>
@@ -228,6 +220,12 @@ export default class Feed {
                 const commentValue = commentInput.value;
                 this.addComment(postData._id, commentValue, commentsContainer, commentInput);
             });
+
+            // Add event listener for the Follow/Unfollow button
+            const followButton = postElement.querySelector('.follow-btn');
+            followButton.addEventListener('click', () =>
+                this.toggleFollowUser(postData.username, followButton)
+            );
     
             // Append the comments section and the post
             postElement.appendChild(commentsContainer);

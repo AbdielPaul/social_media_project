@@ -314,6 +314,7 @@ app.get('/M00976018/posts', ensureLoggedIn, async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
 
     try {
+        // Fetch posts with pagination and additional fields for like count and comments
         const posts = await postsCollection
             .aggregate([
                 {
@@ -347,12 +348,24 @@ app.get('/M00976018/posts', ensureLoggedIn, async (req, res) => {
             ])
             .toArray();
 
-        res.status(200).json(posts);
+        // Check if the logged-in user is following the author of each post
+        const currentUsername = req.session.username; // Get the logged-in user's username
+        const updatedPosts = await Promise.all(
+            posts.map(async post => {
+                const author = await usersCollection.findOne({ username: post.username });
+                const isFollowing = author?.profile.followers.includes(currentUsername) || false;
+
+                return { ...post, isFollowing };
+            })
+        );
+
+        res.status(200).json(updatedPosts);
     } catch (error) {
         console.error('Error fetching posts:', error);
         res.status(500).json({ message: 'Error fetching posts' });
     }
 });
+
 
 // Get a specific post with comments
 app.get('/M00976018/posts/:postId', ensureLoggedIn, async (req, res) => {
@@ -455,8 +468,13 @@ app.post('/M00976018/posts/:postId/comment', ensureLoggedIn, async (req, res) =>
 });
 
 // Follow another user
-app.post('/M00976018/follow/:username', ensureLoggedIn, async (req, res) => {
-    const targetUsername = req.params.username;
+app.post('/M00976018/follow/:username?', ensureLoggedIn, async (req, res) => {
+    const targetUsername = req.params.username || req.body.username;
+
+    if (!targetUsername) {
+        return res.status(400).json({ message: 'Target username is required' });
+    }
+
     const currentUsername = req.session.username;
 
     if (currentUsername === targetUsername) {
@@ -495,8 +513,13 @@ app.post('/M00976018/follow/:username', ensureLoggedIn, async (req, res) => {
 });
 
 // Unfollow a user
-app.delete('/M00976018/follow/:username', ensureLoggedIn, async (req, res) => {
-    const targetUsername = req.params.username;
+app.delete('/M00976018/follow/:username?', ensureLoggedIn, async (req, res) => {
+    const targetUsername = req.params.username || req.body.username;
+
+    if (!targetUsername) {
+        return res.status(400).json({ message: 'Target username is required' });
+    }
+
     const currentUsername = req.session.username;
 
     if (currentUsername === targetUsername) {
@@ -511,13 +534,13 @@ app.delete('/M00976018/follow/:username', ensureLoggedIn, async (req, res) => {
             return res.status(404).json({ message: 'Target user not found' });
         }
 
-        // Remove the target user from the current user's following list
+        // Remove the target user from the current user's following list (if they are there)
         await usersCollection.updateOne(
             { username: currentUsername },
             { $pull: { 'profile.following': targetUsername } }
         );
 
-        // Remove the current user from the target user's followers list
+        // Remove the current user from the target user's followers list (if they are there)
         await usersCollection.updateOne(
             { username: targetUsername },
             { $pull: { 'profile.followers': currentUsername } }
@@ -529,6 +552,7 @@ app.delete('/M00976018/follow/:username', ensureLoggedIn, async (req, res) => {
         res.status(500).json({ message: 'Error unfollowing user' });
     }
 });
+
 
 // Search for users by query
 app.get('/M00976018/users/search', ensureLoggedIn, async (req, res) => {
