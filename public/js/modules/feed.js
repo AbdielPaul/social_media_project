@@ -1,5 +1,3 @@
-// Homepage.js
-
 import Post from './post.js';
 
 export default class Feed {
@@ -8,6 +6,64 @@ export default class Feed {
         this.posts = [];
     }
 
+    // Search for users
+    async searchUsers(query) {
+        if (!query.trim()) {
+            this.showError('Search query cannot be empty.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/M00976018/users/search?q=${query}`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('No users found matching your query');
+            }
+
+            const users = await response.json();
+            this.renderUserSearchResults(users);
+        } catch (error) {
+            // console.error('Error searching for users:', error);
+            this.showError(error.message || 'Error searching for users. Please try again later.');
+        }
+    }
+
+    // Search for posts
+    async searchPosts(query) {
+        if (!query.trim()) {
+            this.showError('Search query cannot be empty.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/M00976018/contents/search?q=${query}`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
+                },
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Error searching for posts');
+            }
+
+            const posts = await response.json();
+            this.renderPosts(posts); // Directly render the search results in the feed
+        } catch (error) {
+            console.error('Error searching for posts:', error);
+            this.showError(error.message || 'Error searching for posts. Please try again later.');
+        }
+    }
+
+    // Fetch posts
     async fetchPosts(page = 1, limit = 10) {
         try {
             const response = await fetch(`/M00976018/posts?page=${page}&limit=${limit}`, {
@@ -30,41 +86,35 @@ export default class Feed {
         }
     }
 
+    // Toggle follow user
     async toggleFollowUser(username, followButton) {
         const isFollowing = followButton.textContent === 'Unfollow';
-        const endpoint = isFollowing
-                ? `/M00976018/follow/${username}` // Use DELETE for unfollow
-                : `/M00976018/follow/${username}`; // Use POST for follow
+        const endpoint = isFollowing ? `/M00976018/follow/${username}` : `/M00976018/follow/${username}`;
         const method = isFollowing ? 'DELETE' : 'POST';
 
-        console.log('Toggling follow state for:', username, 'Method:', method);
+        try {
+            const response = await fetch(endpoint, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json',
+                },
+            });
 
-    try {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
+            }
 
-        const response = await fetch(endpoint, {
-            method,
-            credentials: 'include',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json',
-            },
-        });
-
-        
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
-        }
-
-        // Update the follow button text dynamically
-        followButton.textContent = isFollowing ? 'Follow' : 'Unfollow';
+            followButton.textContent = isFollowing ? 'Follow' : 'Unfollow';
         } catch (error) {
             console.error('Error toggling follow state:', error);
             alert('Error updating follow state');
         }
     }
 
+    // Like a post
     async likePost(postId, likeButton) {
         try {
             const response = await fetch(`/M00976018/posts/${postId}/like`, {
@@ -83,9 +133,6 @@ export default class Feed {
             }
 
             const data = await response.json();
-            console.log('Post liked successfully', data);
-            
-            // Update the like count in the button
             likeButton.textContent = `Like (${data.likeCount})`;
         } catch (error) {
             console.error('Error liking post:', error);
@@ -93,6 +140,7 @@ export default class Feed {
         }
     }
 
+    // Add a comment to a post
     async addComment(postId, comment, commentsContainer, commentInput) {
         if (!comment.trim()) {
             this.showError('Comment cannot be empty.');
@@ -116,12 +164,7 @@ export default class Feed {
                 return;
             }
 
-            console.log('Comment added successfully');
-            
-            // Fetch the latest comments for the post
             this.fetchPostComments(postId, commentsContainer);
-
-            // Clear the comment input
             commentInput.value = '';
         } catch (error) {
             console.error('Error adding comment:', error);
@@ -129,7 +172,7 @@ export default class Feed {
         }
     }
 
-    // Function to fetch and render the post's comments
+    // Fetch comments for a post
     async fetchPostComments(postId, commentsContainer) {
         try {
             const response = await fetch(`/M00976018/posts/${postId}`, {
@@ -147,11 +190,10 @@ export default class Feed {
             const post = await response.json();
             const comments = post.comments || [];
 
-            commentsContainer.innerHTML = ''; // Clear existing comments
-
+            commentsContainer.innerHTML = '';
             comments.forEach(comment => {
                 const commentElement = document.createElement('p');
-                commentElement.textContent = `${this.escapeHTML(comment.username)}: ${this.escapeHTML(comment.comment)} (Posted on: ${new Date(comment.timestamp).toLocaleString()})`;
+                commentElement.textContent = `${comment.username}: ${comment.comment} (Posted on: ${new Date(comment.timestamp).toLocaleString()})`;
                 commentsContainer.appendChild(commentElement);
             });
         } catch (error) {
@@ -160,59 +202,70 @@ export default class Feed {
         }
     }
 
+    // Render the user search results
+    // Render the user search results
+renderUserSearchResults(users) {
+    const searchResultsContainer = this.container.querySelector('#searchResults');
+    searchResultsContainer.innerHTML = '';
+
+    if (users.length === 0) {
+        searchResultsContainer.innerHTML = '<p>No users found matching your query.</p>';
+        return;
+    }
+
+    const loggedInUsername = localStorage.getItem('loggedInUser');
+
+    users.forEach(user => {
+        const userElement = document.createElement('div');
+        userElement.className = 'user-result';
+
+        const isFollowing = user.isFollowing;
+        const followButtonLabel = isFollowing ? 'Unfollow' : 'Follow';
+
+        userElement.innerHTML = `
+            <p><strong>${user.username}</strong> (${user.email})</p>
+            <p><em>Bio:</em> ${user.profile.bio || 'No bio available'}</p>
+            <p>Followers: ${user.profile.followers} | Following: ${user.profile.following}</p>
+            <button class="follow-btn" data-username="${user.username}">${followButtonLabel}</button>
+        `;
+
+        const followButton = userElement.querySelector('.follow-btn');
+        followButton.addEventListener('click', () => this.toggleFollowUser(user.username, followButton));
+
+        searchResultsContainer.appendChild(userElement);
+    });
+}
+
+
+    // Render posts to the page
     renderPosts(posts) {
         const postsContainer = document.createElement('div');
         postsContainer.className = 'posts-container';
-    
+
         posts.forEach(postData => {
-            const post = new Post(
-                postData.username,
-                postData.content,
-                postData.media,
-                new Date(postData.createdAt).toLocaleString()
-            );
-    
+            const post = new Post(postData.username, postData.content, postData.media, new Date(postData.createdAt).toLocaleString());
+
             const postElement = document.createElement('div');
             postElement.className = 'post';
 
-            // Determine the follow state from the post data
-            const isFollowing = postData.isFollowing;
-    
-            // Comments container
-            const commentsContainer = document.createElement('div');
-            commentsContainer.className = 'comments-container';
-    
-            // Render existing comments
-            if (postData.comments && Array.isArray(postData.comments)) {
-                postData.comments.forEach(comment => {
-                    const commentElement = document.createElement('p');
-                    commentElement.textContent = `${this.escapeHTML(comment.username)}: ${this.escapeHTML(comment.comment)} (Posted on: ${new Date(comment.timestamp).toLocaleString()})`;
-                    commentsContainer.appendChild(commentElement);
-                });
-            }
-    
             postElement.innerHTML = `
-                <h3>${this.escapeHTML(postData.title)}</h3>
+                <h3>${postData.title}</h3>
                 ${post.render()}
-                <p><strong>Author:</strong> ${this.escapeHTML(postData.username)}</p>
-                <button class="follow-btn" data-username="${postData.username}">
-                    ${isFollowing ? 'Unfollow' : 'Follow'}
-                </button>
+                <p><strong>Author:</strong> ${postData.username}</p>
+                <button class="follow-btn" data-username="${postData.username}">${postData.isFollowing ? 'Unfollow' : 'Follow'}</button>
                 <button class="like-btn" data-post-id="${postData._id}">Like (${postData.likeCount})</button>
                 <form class="comment-form">
                     <input type="text" name="comment" placeholder="Write a comment..." required>
                     <button type="submit">Comment</button>
                 </form>
             `;
-    
-            // Handle the like button
+
             const likeButton = postElement.querySelector('.like-btn');
             likeButton.addEventListener('click', (event) => {
                 const postId = event.target.dataset.postId;
-                this.likePost(postId, likeButton); // Pass like button to update it directly
+                this.likePost(postId, likeButton);
             });
-    
-            // Handle comment form submission
+
             const commentForm = postElement.querySelector('.comment-form');
             const commentInput = commentForm.querySelector('input[name="comment"]');
             commentForm.addEventListener('submit', (event) => {
@@ -221,22 +274,18 @@ export default class Feed {
                 this.addComment(postData._id, commentValue, commentsContainer, commentInput);
             });
 
-            // Add event listener for the Follow/Unfollow button
             const followButton = postElement.querySelector('.follow-btn');
-            followButton.addEventListener('click', () =>
-                this.toggleFollowUser(postData.username, followButton)
-            );
-    
-            // Append the comments section and the post
-            postElement.appendChild(commentsContainer);
+            followButton.addEventListener('click', () => this.toggleFollowUser(postData.username, followButton));
+
             postsContainer.appendChild(postElement);
         });
-    
+
         const existingPostsContainer = this.container.querySelector('.posts-section');
-        existingPostsContainer.innerHTML = ''; // Clear the container
+        existingPostsContainer.innerHTML = '';
         existingPostsContainer.appendChild(postsContainer);
     }
-    
+
+    // Show error messages
     showError(message) {
         const errorContainer = this.container.querySelector('.error-message');
         if (errorContainer) {
@@ -244,26 +293,39 @@ export default class Feed {
             errorContainer.style.display = 'block';
             setTimeout(() => {
                 errorContainer.style.display = 'none';
-            }, 5000); // Auto-hide after 5 seconds
+            }, 5000);
         }
     }
 
+    // Escape HTML characters to prevent XSS attacks
     escapeHTML(str) {
         if (!str) return '';
         return str.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    // Render the page
     render() {
         this.container.innerHTML = `
             <h1>Home</h1>
             
             <div class="error-message" style="color: red; display: none;"></div>
+            
+            <div class="search-section">
+                <input type="text" id="searchQuery" placeholder="Search for users or posts..." />
+                <button id="searchButton">Search</button>
+                <div id="searchResults"></div>
+            </div>
+            
             <div class="posts-section"></div>
         `;
 
-        // const postForm = this.container.querySelector('#postForm');
-        // postForm.addEventListener('submit', (event) => this.addPost(event));
+        const searchButton = this.container.querySelector('#searchButton');
+        searchButton.addEventListener('click', () => {
+            const searchQuery = this.container.querySelector('#searchQuery').value;
+            this.searchUsers(searchQuery);
+            this.searchPosts(searchQuery); // Search for posts too
+        });
 
-        this.fetchPosts();
+        this.fetchPosts();  // Initially fetch and display posts
     }
 }

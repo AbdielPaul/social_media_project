@@ -557,23 +557,35 @@ app.delete('/M00976018/follow/:username?', ensureLoggedIn, async (req, res) => {
 // Search for users by query
 app.get('/M00976018/users/search', ensureLoggedIn, async (req, res) => {
     const query = req.query.q;
+    const loggedInUsername = req.session.username; // Assuming `req.user` has the logged-in user's details
 
     if (!query || query.trim() === '') {
         return res.status(400).json({ message: 'Query parameter "q" is required' });
     }
 
     try {
-        // Perform a case-insensitive search for matching usernames or emails
-        const results = await usersCollection.find({
-            $or: [
-                { username: { $regex: query, $options: 'i' } },
-                { email: { $regex: query, $options: 'i' } }
-            ]
-        }).project({ username: 1, email: 1, 
-            'profile.bio': 1,
-            'profile.followers': 1,
-            'profile.following': 1 
-        }).toArray();
+        const results = await usersCollection.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { username: { $regex: query, $options: 'i' } },
+                        { email: { $regex: query, $options: 'i' } }
+                    ]
+                }
+            },
+            {
+                $project: {
+                    username: 1,
+                    email: 1,
+                    'profile.bio': 1,
+                    'profile.followers': 1,
+                    'profile.following': 1,
+                    isFollowing: {
+                        $in: [loggedInUsername, '$profile.followers'] // Check if logged-in user follows them
+                    }
+                }
+            }
+        ]).toArray();
 
         if (results.length === 0) {
             return res.status(404).json({ message: 'No users found matching your query' });
@@ -585,6 +597,7 @@ app.get('/M00976018/users/search', ensureLoggedIn, async (req, res) => {
         res.status(500).json({ message: 'Error searching for users' });
     }
 });
+
 
 // Search for content (posts) that matches a query
 app.get('/M00976018/contents/search', ensureLoggedIn, async (req, res) => {
