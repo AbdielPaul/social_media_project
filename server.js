@@ -467,6 +467,131 @@ app.post('/M00976018/posts/:postId/comment', ensureLoggedIn, async (req, res) =>
     }
 });
 
+app.post('/M00976018/playlists', ensureLoggedIn, async (req, res) => {
+    const username = req.session.username;
+    const { playlistName } = req.body;
+
+    try {
+        if (!playlistName) {
+            return res.status(400).json({ message: 'Playlist name is required' });
+        }
+
+        // Check if the playlist already exists
+        const user = await usersCollection.findOne({ username });
+        const playlistExists = user.profile.playlists.some(p => p.name === playlistName);
+
+        if (playlistExists) {
+            return res.status(400).json({ message: 'Playlist already exists' });
+        }
+
+        // Add the new playlist
+        const newPlaylist = { name: playlistName, posts: [] };
+        await usersCollection.updateOne(
+            { username },
+            { $push: { "profile.playlists": newPlaylist } }
+        );
+
+        res.status(201).json({ message: 'Playlist created successfully', newPlaylist });
+    } catch (error) {
+        console.error('Error creating playlist:', error);
+        res.status(500).json({ message: 'Error creating playlist' });
+    }
+});
+
+app.post('/M00976018/playlists/:playlistName/savePost', ensureLoggedIn, async (req, res) => {
+    const username = req.session.username;
+    const { playlistName } = req.params;
+    const { postId } = req.body;
+
+    try {
+        // Validate the post exists
+        const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        // Find the user's playlist
+        const user = await usersCollection.findOne({ username });
+        const playlist = user.profile.playlists.find(p => p.name === playlistName);
+
+        if (!playlist) {
+            return res.status(404).json({ message: 'Playlist not found' });
+        }
+
+        // Add the post to the playlist (avoid duplicates)
+        playlist.posts = playlist.posts || [];
+        if (!playlist.posts.includes(postId)) {
+            playlist.posts.push(postId);
+
+            // Update the user's playlist in the database
+            await usersCollection.updateOne(
+                { username, "profile.playlists.name": playlistName },
+                { $set: { "profile.playlists.$.posts": playlist.posts } }
+            );
+
+            res.status(200).json({ message: 'Post saved to playlist successfully', playlist });
+        } else {
+            res.status(400).json({ message: 'Post already exists in the playlist' });
+        }
+    } catch (error) {
+        console.error('Error saving post to playlist:', error);
+        res.status(500).json({ message: 'Error saving post to playlist' });
+    }
+});
+
+app.get('/M00976018/playlists/:playlistName/posts', ensureLoggedIn, async (req, res) => {
+    const username = req.session.username;
+    const { playlistName } = req.params;
+
+    try {
+        // Find the user's playlist
+        const user = await usersCollection.findOne({ username });
+        const playlist = user.profile.playlists.find(p => p.name === playlistName);
+
+        if (!playlist) {
+            return res.status(404).json({ message: 'Playlist not found' });
+        }
+
+        // Fetch the post details for the posts in the playlist
+        const posts = await postsCollection
+            .find({ _id: { $in: playlist.posts.map(id => new ObjectId(id)) } })
+            .toArray();
+
+        res.status(200).json({ playlistName, posts });
+    } catch (error) {
+        console.error('Error fetching playlist posts:', error);
+        res.status(500).json({ message: 'Error fetching playlist posts' });
+    }
+});
+
+
+app.delete('/M00976018/playlists', async (req, res) => {
+    const { playlistName } = req.body;
+    if (!playlistName) {
+        return res.status(400).json({ message: 'Playlist name is required' });
+    }
+
+    try {
+        const username = req.session.username; // Authentication required
+        const result = await usersCollection.updateOne(
+            { username },
+            { $pull: { "profile.playlists": { name: playlistName } } }
+        );
+
+        if (result.modifiedCount === 0) {
+            return res.status(404).json({ message: 'Playlist not found' });
+        }
+
+        res.status(200).json({ message: 'Playlist deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting playlist:', error);
+        res.status(500).json({ message: 'Server error occurred' });
+    }
+});
+
+
+
+
 // Follow another user
 app.post('/M00976018/follow/:username?', ensureLoggedIn, async (req, res) => {
     const targetUsername = req.params.username || req.body.username;

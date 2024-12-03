@@ -88,31 +88,31 @@ export default class Homepage {
 
         console.log('Toggling follow state for:', username, 'Method:', method);
 
-    try {
+        try {
 
-        const response = await fetch(endpoint, {
-            method,
-            credentials: 'include',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json',
-            },
-        });
+            const response = await fetch(endpoint, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json',
+                },
+            });
 
-        
+            
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
+            }
+
+            // Update the follow button text dynamically
+            followButton.textContent = isFollowing ? 'Follow' : 'Unfollow';
+        } catch (error) {
+            console.error('Error toggling follow state:', error);
+            alert('Error updating follow state');
         }
-
-        // Update the follow button text dynamically
-        followButton.textContent = isFollowing ? 'Follow' : 'Unfollow';
-    } catch (error) {
-        console.error('Error toggling follow state:', error);
-        alert('Error updating follow state');
     }
-}
 
 
     async likePost(postId, likeButton) {
@@ -210,6 +210,37 @@ export default class Homepage {
         }
     }
 
+    async saveToPlaylist(postId) {
+        const playlistName = prompt('Enter the playlist name to save this post to:');
+        if (!playlistName) {
+            alert('Playlist name is required.');
+            return;
+        }
+    
+        try {
+            const response = await fetch(`/M00976018/playlists/${encodeURIComponent(playlistName)}/savePost`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ postId }),
+            });
+    
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to save post to playlist.');
+            }
+    
+            const data = await response.json();
+            alert(`Post saved to playlist: ${data.playlist.name}`);
+        } catch (error) {
+            console.error('Error saving to playlist:', error);
+            this.showError('Error saving post to playlist. Please try again.');
+        }
+    }
+
     renderPosts(posts) {
         const postsContainer = document.createElement('div');
         postsContainer.className = 'posts-container';
@@ -249,6 +280,7 @@ export default class Homepage {
                     ${isFollowing ? 'Unfollow' : 'Follow'}
                 </button>
                 <button class="like-btn" data-post-id="${postData._id}">Like (${postData.likeCount})</button>
+                <button class="save-btn" data-post-id="${postData._id}">Save to Playlist</button>
                 <form class="comment-form">
                     <input type="text" name="comment" placeholder="Write a comment..." required>
                     <button type="submit">Comment</button>
@@ -276,6 +308,13 @@ export default class Homepage {
             followButton.addEventListener('click', () =>
                 this.toggleFollowUser(postData.username, followButton)
             );
+
+            // Add event listener for the Save to Playlist button
+            const saveButton = postElement.querySelector('.save-btn');
+            saveButton.addEventListener('click', (event) => {
+                const postId = event.target.dataset.postId;
+                this.saveToPlaylist(postId);
+            });
     
             // Append the comments section and the post
             postElement.appendChild(commentsContainer);
