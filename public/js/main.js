@@ -72,7 +72,8 @@ class App {
 // Initialize the app on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
     const app = new App();
+    window.app = app; // Ensure global accessibility
     const loggedInUser = localStorage.getItem('loggedInUser');
     app.loadPage(loggedInUser ? 'homepage' : 'login');
-    window.app = app; // Make app accessible globally for debugging if needed
 });
+

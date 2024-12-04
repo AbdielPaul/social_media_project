@@ -40,7 +40,7 @@ export default class Feed {
             this.showError('Search query cannot be empty.');
             return;
         }
-
+    
         try {
             const response = await fetch(`/M00976018/contents/search?q=${query}`, {
                 method: 'GET',
@@ -49,19 +49,26 @@ export default class Feed {
                     'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
                 },
             });
-
+    
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Error searching for posts');
+                throw new Error(errorData.message || 'Error searching for posts.');
             }
-
+    
             const posts = await response.json();
-            this.renderPosts(posts); // Directly render the search results in the feed
+    
+            if (posts.length === 0) {
+                this.showError('No posts found matching your query.');
+                return;
+            }
+    
+            this.renderPosts(posts); // Render the search results as posts
         } catch (error) {
             console.error('Error searching for posts:', error);
             this.showError(error.message || 'Error searching for posts. Please try again later.');
         }
     }
+    
 
     // Fetch posts
     async fetchPosts(page = 1, limit = 10) {
@@ -73,136 +80,32 @@ export default class Feed {
                     'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
                 },
             });
-
+    
             if (!response.ok) {
                 throw new Error('Failed to fetch posts');
             }
-
-            const postsData = await response.json();
-            this.renderPosts(postsData);
+    
+            const data = await response.json();
+    
+            // If data is an array (not wrapped in a 'posts' object)
+            if (Array.isArray(data)) {
+                this.posts = data; // Assign the array of posts directly
+            } else {
+                this.posts = []; // If the structure is unexpected, fallback to an empty array
+            }
+    
+            if (this.posts.length === 0) {
+                this.showError('No posts available.');
+            }
+    
+            this.renderPosts();
         } catch (error) {
             console.error('Error fetching posts:', error);
             this.showError('Failed to fetch posts. Please try again later.');
         }
     }
 
-    // Toggle follow user
-    async toggleFollowUser(username, followButton) {
-        const isFollowing = followButton.textContent === 'Unfollow';
-        const endpoint = isFollowing ? `/M00976018/follow/${username}` : `/M00976018/follow/${username}`;
-        const method = isFollowing ? 'DELETE' : 'POST';
-
-        try {
-            const response = await fetch(endpoint, {
-                method,
-                credentials: 'include',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `Failed to ${isFollowing ? 'unfollow' : 'follow'} user`);
-            }
-
-            followButton.textContent = isFollowing ? 'Follow' : 'Unfollow';
-        } catch (error) {
-            console.error('Error toggling follow state:', error);
-            alert('Error updating follow state');
-        }
-    }
-
-    // Like a post
-    async likePost(postId, likeButton) {
-        try {
-            const response = await fetch(`/M00976018/posts/${postId}/like`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                this.showError(errorData.message || 'Failed to like post. Please try again.');
-                return;
-            }
-
-            const data = await response.json();
-            likeButton.textContent = `Like (${data.likeCount})`;
-        } catch (error) {
-            console.error('Error liking post:', error);
-            this.showError('Error liking post. Please try again.');
-        }
-    }
-
-    // Add a comment to a post
-    async addComment(postId, comment, commentsContainer, commentInput) {
-        if (!comment.trim()) {
-            this.showError('Comment cannot be empty.');
-            return;
-        }
-
-        try {
-            const response = await fetch(`/M00976018/posts/${postId}/comment`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ comment }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                this.showError(errorData.message || 'Failed to add comment. Please try again.');
-                return;
-            }
-
-            this.fetchPostComments(postId, commentsContainer);
-            commentInput.value = '';
-        } catch (error) {
-            console.error('Error adding comment:', error);
-            this.showError('Error adding comment. Please try again.');
-        }
-    }
-
-    // Fetch comments for a post
-    async fetchPostComments(postId, commentsContainer) {
-        try {
-            const response = await fetch(`/M00976018/posts/${postId}`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch post details');
-            }
-
-            const post = await response.json();
-            const comments = post.comments || [];
-
-            commentsContainer.innerHTML = '';
-            comments.forEach(comment => {
-                const commentElement = document.createElement('p');
-                commentElement.textContent = `${comment.username}: ${comment.comment} (Posted on: ${new Date(comment.timestamp).toLocaleString()})`;
-                commentsContainer.appendChild(commentElement);
-            });
-        } catch (error) {
-            console.error('Error fetching comments:', error);
-            this.showError('Failed to fetch comments. Please try again later.');
-        }
-    }
-
-    // Render the user search results
+    
     // Render the user search results
 renderUserSearchResults(users) {
     const searchResultsContainer = this.container.querySelector('#searchResults');
@@ -238,52 +141,29 @@ renderUserSearchResults(users) {
 
 
     // Render posts to the page
-    renderPosts(posts) {
+    renderPosts(postsToRender = this.posts) {
+        if (!postsToRender || postsToRender.length === 0) {
+            this.showError('No posts available to display.');
+            return;
+        }
+    
         const postsContainer = document.createElement('div');
         postsContainer.className = 'posts-container';
-
-        posts.forEach(postData => {
-            const post = new Post(postData.username, postData.content, postData.media, new Date(postData.createdAt).toLocaleString());
-
-            const postElement = document.createElement('div');
-            postElement.className = 'post';
-
-            postElement.innerHTML = `
-                <h3>${postData.title}</h3>
-                ${post.render()}
-                <p><strong>Author:</strong> ${postData.username}</p>
-                <button class="follow-btn" data-username="${postData.username}">${postData.isFollowing ? 'Unfollow' : 'Follow'}</button>
-                <button class="like-btn" data-post-id="${postData._id}">Like (${postData.likeCount})</button>
-                <form class="comment-form">
-                    <input type="text" name="comment" placeholder="Write a comment..." required>
-                    <button type="submit">Comment</button>
-                </form>
-            `;
-
-            const likeButton = postElement.querySelector('.like-btn');
-            likeButton.addEventListener('click', (event) => {
-                const postId = event.target.dataset.postId;
-                this.likePost(postId, likeButton);
-            });
-
-            const commentForm = postElement.querySelector('.comment-form');
-            const commentInput = commentForm.querySelector('input[name="comment"]');
-            commentForm.addEventListener('submit', (event) => {
-                event.preventDefault();
-                const commentValue = commentInput.value;
-                this.addComment(postData._id, commentValue, commentsContainer, commentInput);
-            });
-
-            const followButton = postElement.querySelector('.follow-btn');
-            followButton.addEventListener('click', () => this.toggleFollowUser(postData.username, followButton));
-
-            postsContainer.appendChild(postElement);
+    
+        postsToRender.forEach(postData => {
+            const post = new Post(postData, postsContainer); // Create a Post instance for each post
+            postsContainer.appendChild(post.render()); // Render and append each post
         });
-
+    
         const existingPostsContainer = this.container.querySelector('.posts-section');
-        existingPostsContainer.innerHTML = '';
-        existingPostsContainer.appendChild(postsContainer);
+        if (existingPostsContainer) {
+            existingPostsContainer.innerHTML = ''; // Clear the container before appending new posts
+            existingPostsContainer.appendChild(postsContainer); // Add the new posts
+        } else {
+            console.error('No posts-section container found.');
+        }
     }
+    
 
     // Show error messages
     showError(message) {
