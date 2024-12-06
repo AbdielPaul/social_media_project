@@ -107,37 +107,66 @@ export default class Feed {
 
     
     // Render the user search results
-renderUserSearchResults(users) {
-    const searchResultsContainer = this.container.querySelector('#searchResults');
-    searchResultsContainer.innerHTML = '';
+    renderUserSearchResults(users) {
+        const searchResultsContainer = this.container.querySelector('#searchResults');
+        searchResultsContainer.innerHTML = '';
 
-    if (users.length === 0) {
-        searchResultsContainer.innerHTML = '<p>No users found matching your query.</p>';
-        return;
+        if (users.length === 0) {
+            searchResultsContainer.innerHTML = '<p>No users found matching your query.</p>';
+            return;
+        }
+
+        const loggedInUsername = localStorage.getItem('loggedInUser');
+
+        users.forEach(user => {
+            const userElement = document.createElement('div');
+            userElement.className = 'user-result';
+
+            const isFollowing = user.isFollowing;
+            const followButtonLabel = isFollowing ? 'Unfollow' : 'Follow';
+
+            userElement.innerHTML = `
+                <p><strong>${user.username}</strong> (${user.email})</p>
+                <p><em>Bio:</em> ${user.profile.bio || 'No bio available'}</p>
+                <p>Followers: ${user.profile.followers} | Following: ${user.profile.following}</p>
+                <button class="follow-btn" data-username="${user.username}">${followButtonLabel}</button>
+            `;
+
+            const followButton = userElement.querySelector('.follow-btn');
+            followButton.addEventListener('click', () => this.toggleFollowUser(user.username, followButton));
+
+            searchResultsContainer.appendChild(userElement);
+        });
     }
 
-    const loggedInUsername = localStorage.getItem('loggedInUser');
-
-    users.forEach(user => {
-        const userElement = document.createElement('div');
-        userElement.className = 'user-result';
-
-        const isFollowing = user.isFollowing;
-        const followButtonLabel = isFollowing ? 'Unfollow' : 'Follow';
-
-        userElement.innerHTML = `
-            <p><strong>${user.username}</strong> (${user.email})</p>
-            <p><em>Bio:</em> ${user.profile.bio || 'No bio available'}</p>
-            <p>Followers: ${user.profile.followers} | Following: ${user.profile.following}</p>
-            <button class="follow-btn" data-username="${user.username}">${followButtonLabel}</button>
-        `;
-
-        const followButton = userElement.querySelector('.follow-btn');
-        followButton.addEventListener('click', () => this.toggleFollowUser(user.username, followButton));
-
-        searchResultsContainer.appendChild(userElement);
-    });
-}
+    async toggleFollowUser(username, button) {
+        const isFollowing = button.textContent === 'Unfollow'; // Determine current state
+        const endpoint = `/M00976018/follow/${username}`;
+        const method = isFollowing ? 'DELETE' : 'POST'; // Choose action based on state
+    
+        try {
+            const response = await fetch(endpoint, {
+                method,
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+    
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Error updating follow status.');
+            }
+    
+            // Update the button label and toggle state
+            button.textContent = isFollowing ? 'Follow' : 'Unfollow';
+        } catch (error) {
+            console.error('Error updating follow status:', error);
+            this.showError(error.message || 'Failed to update follow status. Please try again later.');
+        }
+    }
+    
 
 
     // Render posts to the page

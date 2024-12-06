@@ -194,16 +194,22 @@ app.post('/M00976018/login', async (req, res) => {
 
 
 // Logout endpoint
-app.post('/M00976018/logout', (req, res) => {
-    req.session.destroy(err => {
-        if (err) {
-            console.error('Error during logout:', err);
-            return res.status(500).json({ message: 'Error during logout' });
-        }
-        res.clearCookie('connect.sid'); // Clear session cookie
-        res.status(200).json({ message: 'Logout successful' });
-    });
+app.delete('/M00976018/login', (req, res) => {
+    if (req.session) {
+        // Destroy the session
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Error during logout:', err);
+                return res.status(500).json({ message: 'Error during logout' });
+            }
+
+            res.status(200).json({ message: 'Logout successful' });
+        });
+    } else {
+        res.status(200).json({ message: 'No active session found' });
+    }
 });
+
 
 // Check login status (GET /status)
 app.get('/M00976018/login', (req, res) => {

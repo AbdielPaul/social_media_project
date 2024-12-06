@@ -21,6 +21,7 @@ class App {
         };
 
         this.setupEventListeners();
+        this.updateNav(localStorage.getItem('loggedInUser'));
     }
 
     setupEventListeners() {
@@ -34,39 +35,56 @@ class App {
 
     loadPage(page) {
         const loggedInUser = localStorage.getItem('loggedInUser');
-
+    
         if (loggedInUser || page === 'login') {
             if (this.pages[page]) {
                 this.pages[page].render(this.container);
                 this.updateNav(loggedInUser);
             } else {
                 console.error(`Page "${page}" not found.`);
+                this.container.innerHTML = `<p>Page not found. Please try again.</p>`;
             }
         } else {
             this.loadPage('login');
         }
     }
+    
 
     updateNav(loggedInUser) {
         if (loggedInUser) {
             this.navLinks.login?.classList.add('hidden');
             this.navLinks.logout?.classList.remove('hidden');
-            this.navLinks.homepage?.classList.remove('hidden');
-            this.navLinks.feed?.classList.remove('hidden');
-            this.navLinks.profile?.classList.remove('hidden');
         } else {
             this.navLinks.login?.classList.remove('hidden');
             this.navLinks.logout?.classList.add('hidden');
-            this.navLinks.homepage?.classList.add('hidden');
-            this.navLinks.feed?.classList.add('hidden');
-            this.navLinks.profile?.classList.add('hidden');
         }
     }
 
-    logout() {
+    async logout() {
+        try {
+            // logout request to the server
+            const response = await fetch('http://localhost:8080/M00976018/login', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+    
+            if (response.ok) {
+                console.log('Successfully logged out on the server.');
+            } else {
+                console.warn('Server-side logout failed:', await response.json());
+            }
+        } catch (error) {
+            console.error('Error during server-side logout:', error);
+        }
+    
+        // Removing local session and redirecting to login page
         localStorage.removeItem('loggedInUser');
+        this.updateNav(null);
         this.loadPage('login');
     }
+    
 }
 
 // Initialize the app on DOMContentLoaded
