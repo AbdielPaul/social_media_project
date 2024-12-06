@@ -10,7 +10,7 @@ export default class Homepage {
 
     async fetchPosts(page = 1, limit = 10) {
         try {
-            const response = await fetch(`/M00976018/posts?page=${page}&limit=${limit}`, {
+            const response = await fetch(`/M00976018/contents?page=${page}&limit=${limit}`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {
@@ -129,7 +129,7 @@ export default class Homepage {
         }
 
         try {
-            const response = await fetch('/M00976018/posts', {
+            const response = await fetch('/M00976018/contents', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

@@ -73,7 +73,7 @@ export default class Feed {
     // Fetch posts
     async fetchPosts(page = 1, limit = 10) {
         try {
-            const response = await fetch(`/M00976018/posts?page=${page}&limit=${limit}`, {
+            const response = await fetch(`/M00976018/contents?page=${page}&limit=${limit}`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {

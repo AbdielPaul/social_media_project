@@ -270,7 +270,7 @@ app.put('/M00976018/profile', ensureLoggedIn, async (req, res) => {
 });
 
 // Create a new post
-app.post('/M00976018/posts', ensureLoggedIn, upload.array('media', 5), async (req, res) => {
+app.post('/M00976018/contents', ensureLoggedIn, upload.array('media', 5), async (req, res) => {
     try {
         const { title, content } = req.body;
         const username = req.session.username; // Get username from the authenticated user
@@ -315,7 +315,7 @@ app.post('/M00976018/posts', ensureLoggedIn, upload.array('media', 5), async (re
 });
 
 // Fetch all posts with likes and comments
-app.get('/M00976018/posts', ensureLoggedIn, async (req, res) => {
+app.get('/M00976018/contents', ensureLoggedIn, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
 
