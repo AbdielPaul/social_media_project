@@ -5,7 +5,7 @@ export default class Post {
         this.media = postData.media || [];
         this.title = postData.title || '';
         this.comments = postData.comments || [];
-        this.likeCount = postData.likeCount || 0;
+        this.likedBy = postData.likedBy || 0;
         this.postId = postData._id;
         this.isFollowing = postData.isFollowing || false;
         this.createdAt = new Date(postData.createdAt).toLocaleString();
@@ -19,7 +19,7 @@ export default class Post {
                 if (!media || !media.type) return ''; // Ensure media and type are defined
                 const fileType = media.type.split('/')[0]; // Extract type from MIME type
                 const mediaUrl = `/M00976018/media/${media.filename}`; // Endpoint for fetching media
-
+    
                 if (fileType === 'image') {
                     return `<img src="${mediaUrl}" class="img-fluid rounded mb-3" alt="Post Image">`;
                 } else if (fileType === 'video') {
@@ -41,10 +41,13 @@ export default class Post {
                 }
             })
             .join('');
-
+    
         // Create post HTML structure
         const postElement = document.createElement('div');
         postElement.className = 'card mb-4 post';
+    
+        
+        const likeButtonText = this.likedBy.length || 0;
         postElement.innerHTML = `
             <div class="card-header">
                 <strong>${this.escapeHTML(this.username)}</strong>
@@ -58,8 +61,8 @@ export default class Post {
                 <button class="follow-btn" data-post-id="${this.postId}">
                     ${this.isFollowing ? 'Unfollow' : 'Follow'}
                 </button>
-
-                <button class="like-btn">Like (${this.likeCount})</button>
+    
+                <button class="like-btn">Like (${likeButtonText})</button>
                 <button class="save-btn">Save to Playlist</button>
                 <form class="comment-form">
                     <input type="text" name="comment" placeholder="Write a comment..." required>
@@ -73,10 +76,9 @@ export default class Post {
                             </p>`)
                         .join('')}
                 </div>
-
             </div>
         `;
-
+    
         // Add event listeners for buttons and forms
         postElement.querySelector('.like-btn').addEventListener('click', () => this.likePost());
         postElement.querySelector('.follow-btn').addEventListener('click', () => this.toggleFollow());
@@ -87,9 +89,10 @@ export default class Post {
             this.addComment(commentInput.value, postElement.querySelector('.comments-container'));
             commentInput.value = '';
         });
-
+    
         return postElement;
     }
+    
 
     escapeHTML(str) {
         if (!str) return '';
@@ -106,19 +109,38 @@ export default class Post {
                     'Content-Type': 'application/json',
                 },
             });
-
+    
             if (!response.ok) {
-                throw new Error('Failed to like post');
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to like/unlike post');
             }
-
+    
             const data = await response.json();
-            this.likeCount = data.likeCount;
-            this.parentContainer.querySelector('.like-btn').textContent = `Like (${this.likeCount})`;
+    
+            // Update the like button dynamically
+            const likeButton = this.parentContainer.querySelector('.like-btn');
+            if (likeButton) {
+                const likeCount = data.likedBy.length; // Assuming `likedBy` is an array
+                likeButton.textContent = `Like (${likeCount})`;
+    
+                // Optionally, change the button's appearance based on the action
+                if (data.message === 'Post liked successfully') {
+                    likeButton.classList.add('liked'); // Add a class for "liked" state
+                } else {
+                    likeButton.classList.remove('liked'); // Remove the "liked" state
+                }
+            } else {
+                console.error('Like button not found in DOM!');
+            }
         } catch (error) {
-            console.error('Error liking post:', error);
+            console.error('Error liking/unliking post:', error);
+            alert(error.message);
         }
     }
-
+    
+    
+    
+    
     async toggleFollow() {
         const isFollowing = this.isFollowing;
         const method = isFollowing ? 'DELETE' : 'POST';
@@ -210,7 +232,4 @@ export default class Post {
             alert(error.message || 'Error adding comment. Please try again.');
         }
     }
-    
-    
-    
 }

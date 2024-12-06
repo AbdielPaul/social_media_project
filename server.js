@@ -340,7 +340,7 @@ app.get('/M00976018/posts', ensureLoggedIn, async (req, res) => {
                         username: 1,
                         media: 1,
                         createdAt: 1,
-                        likeCount: 1,
+                        likedBy: 1,
                         comments: 1,
                         commentCount: 1
                     }
@@ -392,37 +392,61 @@ app.get('/M00976018/posts/:postId', ensureLoggedIn, async (req, res) => {
 // Like a post
 app.post('/M00976018/posts/:postId/like', ensureLoggedIn, async (req, res) => {
     const { postId } = req.params;
-    const username = req.session.username;
+    const username = req.session.username; // Ensure `ensureLoggedIn` middleware sets this correctly
 
     try {
+        // Find the post by its ID
         const post = await postsCollection.findOne({ _id: new ObjectId(postId) });
 
+        // If the post does not exist, return a 404 error
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
         }
 
-        // Optionally, prevent multiple likes from the same user
-        // For simplicity, we'll allow multiple likes here
+        let updateOperation;
+        let actionMessage;
 
-        // Increment the like count in the post document
-        const updatedPost = await postsCollection.updateOne(
-            { _id: new ObjectId(postId) },
-            { $inc: { likeCount: 1 } } // Increment likeCount by 1
-        );
-
-        if (updatedPost.modifiedCount === 0) {
-            return res.status(500).json({ message: 'Error liking post' });
+        // Check if the user has already liked the post
+        if (post.likedBy && post.likedBy.includes(username)) {
+            // User already liked the post, so "unlike" it
+            updateOperation = { $pull: { likedBy: username } };
+            actionMessage = 'Post unliked successfully';
+        } else {
+            // User has not liked the post yet, so "like" it
+            updateOperation = { $addToSet: { likedBy: username } };
+            actionMessage = 'Post liked successfully';
         }
 
-        // Fetch the updated likeCount
-        const updated = await postsCollection.findOne({ _id: new ObjectId(postId) });
+        // Perform the update operation
+        await postsCollection.updateOne(
+            { _id: new ObjectId(postId) },
+            updateOperation
+        );
 
-        res.status(200).json({ message: 'Post liked successfully', likeCount: updated.likeCount });
+        // Fetch the updated post to send back the latest `likedBy` array
+        const updatedPost = await postsCollection.findOne(
+            { _id: new ObjectId(postId) },
+            { projection: { likedBy: 1 } } // Only fetch the `likedBy` field for efficiency
+        );
+
+        // Debugging output (can be removed in production)
+        console.log('Updated likedBy:', updatedPost.likedBy);
+
+        // Return success response with the updated `likedBy` array and action message
+        res.status(200).json({
+            message: actionMessage,
+            likedBy: updatedPost.likedBy,
+        });
     } catch (error) {
-        console.error('Error liking post:', error);
-        res.status(500).json({ message: 'Error liking post' });
+        // Log the error and return a generic server error response
+        console.error('Error liking/unliking post:', error);
+        res.status(500).json({ message: 'Error liking/unliking post' });
     }
 });
+
+
+
+
 
 // Add a comment to a post
 app.post('/M00976018/posts/:postId/comment', ensureLoggedIn, async (req, res) => {

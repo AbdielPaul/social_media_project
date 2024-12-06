@@ -140,6 +140,21 @@ export default class Profile {
                         <p><strong>Playlists:</strong> ${profile.profile.playlists.length}</p>
                         <p><strong>Posts:</strong> ${profile.profile.posts.length}</p>
                     </div>
+
+                    <h3>Create New Playlist</h3>
+                    <form id="create-playlist-form">
+                        <div>
+                            <label>Playlist Name: </label>
+                            <input type="text" id="playlist-name" name="playlistName" />
+                        </div>
+                        <button type="submit">Create Playlist</button>
+                    </form>
+                    <div id="create-playlist-message"></div>
+    
+                    <h3>Your Playlists</h3>
+                    <div id="saved-playlists-container">
+                        ${await this.renderPlaylists(profile.profile.playlists)}
+                    </div>
     
                     <h3>Edit Profile</h3>
                     <form id="profile-form">
@@ -162,20 +177,7 @@ export default class Profile {
                         <button type="submit">Save</button>
                     </form>
     
-                    <h3>Create New Playlist</h3>
-                    <form id="create-playlist-form">
-                        <div>
-                            <label>Playlist Name: </label>
-                            <input type="text" id="playlist-name" name="playlistName" />
-                        </div>
-                        <button type="submit">Create Playlist</button>
-                    </form>
-                    <div id="create-playlist-message"></div>
-    
-                    <h3>Your Playlists</h3>
-                    <div id="saved-playlists-container">
-                        ${await this.renderPlaylists(profile.profile.playlists)}
-                    </div>
+                    
                 </div>
             `;
     
