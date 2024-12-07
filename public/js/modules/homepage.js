@@ -6,6 +6,7 @@ export default class Homepage {
             throw new Error('Invalid container provided to Homepage.');
         }
         this.container = container;
+        this.posts = [];
     }
 
     async fetchPosts(page = 1, limit = 10) {
@@ -17,52 +18,43 @@ export default class Homepage {
                     'Authorization': `Bearer ${localStorage.getItem('loggedInUser')}`,
                 },
             });
-    
+
             if (!response.ok) {
                 throw new Error('Failed to fetch posts');
             }
-    
+
             const data = await response.json();
-    
-            // If data is an array (not wrapped in a 'posts' object)
-            if (Array.isArray(data)) {
-                this.posts = data; // Assign the array of posts directly
-            } else {
-                this.posts = []; // If the structure is unexpected, fallback to an empty array
-            }
-    
+
+            // Filter posts by whether the logged-in user follows the author
+            this.posts = data.filter(post => post.isFollowing); // Only include posts from followed users
+
             if (this.posts.length === 0) {
-                this.showError('No posts available.');
+                this.showError('No posts available from followed users.');
             }
-    
+
             this.renderPosts();
         } catch (error) {
             console.error('Error fetching posts:', error);
             this.showError('Failed to fetch posts. Please try again later.');
         }
     }
-    
-    
-    
-    
-    
 
     renderPosts() {
-        console.log('Posts array:', this.posts); // Debugging line to ensure posts are available
-    
+        console.log('Filtered Posts:', this.posts); // Debugging line to ensure posts are filtered
+
         if (!this.posts || this.posts.length === 0) {
             this.showError('No posts available to display.');
             return;
         }
-    
+
         const postsContainer = document.createElement('div');
         postsContainer.className = 'posts-container';
-    
+
         this.posts.forEach(postData => {
             const post = new Post(postData, postsContainer); // Create a Post instance for each post
             postsContainer.appendChild(post.render()); // Render and append each post
         });
-    
+
         const existingPostsContainer = this.container.querySelector('.posts-section');
         if (existingPostsContainer) {
             existingPostsContainer.innerHTML = ''; // Clear the container before appending new posts
@@ -71,7 +63,6 @@ export default class Homepage {
             console.error('No posts-section container found.');
         }
     }
-    
 
     showError(message) {
         const errorContainer = this.container.querySelector('.error-message');
@@ -88,9 +79,9 @@ export default class Homepage {
         this.container.innerHTML = `
             <h1>Home</h1>
             <form id="postForm">
-                <input type="text" name="title" placeholder="Post Title" required>
-                <textarea name="content" placeholder="Write your post..." required></textarea>
-                <input type="file" name="media" multiple>
+                <input type="text" id="create-post-title" name="title" placeholder="Post Title" required>
+                <textarea name="content" id="" placeholder="Write your post..." required></textarea>
+                <input type="file" id="" name="media" multiple>
                 <button type="submit">Post</button>
             </form>
             <div class="error-message" style="color: red; display: none;"></div>
@@ -100,7 +91,7 @@ export default class Homepage {
         const postForm = this.container.querySelector('#postForm');
         postForm.addEventListener('submit', (event) => this.addPost(event));
 
-        this.fetchPosts(); // Fetch posts initially
+        this.fetchPosts(); // Fetch posts from the API (filter by followed users)
     }
 
     async addPost(event) {

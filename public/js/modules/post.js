@@ -21,21 +21,26 @@ export default class Post {
                 const mediaUrl = `/M00976018/media/${media.filename}`; // Endpoint for fetching media
     
                 if (fileType === 'image') {
-                    return `<img src="${mediaUrl}" class="img-fluid rounded mb-3" alt="Post Image">`;
+                    return `
+                        <div class="fixed-ratio-container">
+                            <img src="${mediaUrl}" class="fixed-ratio-content img-fluid rounded mb-3" alt="Post Image">
+                        </div>`;
                 } else if (fileType === 'video') {
                     return `
-                        <video class="img-fluid rounded mb-3" controls>
-                            <source src="${mediaUrl}" type="${media.type}">
-                            Your browser does not support the video element.
-                        </video>
-                    `;
+                        <div class="fixed-ratio-container">
+                            <video class="fixed-ratio-content img-fluid rounded mb-3" controls>
+                                <source src="${mediaUrl}" type="${media.type}">
+                                Your browser does not support the video element.
+                            </video>
+                        </div>`;
                 } else if (fileType === 'audio') {
                     return `
-                        <audio controls class="audio-player mb-3">
-                            <source src="${mediaUrl}" type="${media.type}">
-                            Your browser does not support the audio element.
-                        </audio>
-                    `;
+                        <div class="audio-container">
+                            <audio controls class="audio-player mb-3">
+                                <source src="${mediaUrl}" type="${media.type}">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>`;
                 } else {
                     return ''; // Unsupported media type
                 }
@@ -45,25 +50,23 @@ export default class Post {
         // Create post HTML structure
         const postElement = document.createElement('div');
         postElement.className = 'card mb-4 post';
-    
-        
+        const isLiked = this.likedBy.includes(localStorage.getItem('loggedInUser'));
+        const likeButtonIconClass = isLiked ? 'bi-heart-fill' : 'bi-heart';
         const likeButtonText = this.likedBy.length || 0;
         postElement.innerHTML = `
             <div class="card-header">
                 <strong>${this.escapeHTML(this.username)}</strong>
                 <span class="text-muted ms-2">${this.createdAt}</span>
+                <button class="follow-btn" data-post-id="${this.postId}">
+                    ${this.isFollowing ? 'Unfollow' : 'Follow'}
+                </button>
             </div>
             <div class="card-body">
                 <h3>${this.escapeHTML(this.title)}</h3>
                 <p>${this.escapeHTML(this.content)}</p>
                 ${mediaContent}
-                <p><strong>Author:</strong> ${this.escapeHTML(this.username)}</p>
-                <button class="follow-btn" data-post-id="${this.postId}">
-                    ${this.isFollowing ? 'Unfollow' : 'Follow'}
-                </button>
-    
-                <button class="like-btn">Like (${likeButtonText})</button>
-                <button class="save-btn">Save to Playlist</button>
+                <button class="like-btn"><i class="bi ${likeButtonIconClass}"></i> ${likeButtonText}</button>
+                <button class="save-btn"><i class="bi bi-bookmark"></i></button>
                 <form class="comment-form">
                     <input type="text" name="comment" placeholder="Write a comment..." required>
                     <button type="submit">Comment</button>
@@ -93,6 +96,7 @@ export default class Post {
         return postElement;
     }
     
+    
 
     escapeHTML(str) {
         if (!str) return '';
@@ -109,26 +113,23 @@ export default class Post {
                     'Content-Type': 'application/json',
                 },
             });
-    
+
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to like/unlike post');
             }
-    
+
             const data = await response.json();
-    
+
             // Update the like button dynamically
             const likeButton = this.parentContainer.querySelector('.like-btn');
             if (likeButton) {
-                const likeCount = data.likedBy.length; // Assuming `likedBy` is an array
-                likeButton.textContent = `Like (${likeCount})`;
-    
-                // Optionally, change the button's appearance based on the action
-                if (data.message === 'Post liked successfully') {
-                    likeButton.classList.add('liked'); // Add a class for "liked" state
-                } else {
-                    likeButton.classList.remove('liked'); // Remove the "liked" state
-                }
+                const isLiked = data.likedBy.includes(localStorage.getItem('loggedInUser'));
+                const likeButtonIconClass = isLiked ? 'bi-heart-fill' : 'bi-heart';
+                const likeCount = data.likedBy.length;
+
+                // Update like button text with like count and the correct icon
+                likeButton.innerHTML = `<i class="bi ${likeButtonIconClass}"></i> ${likeCount}`;
             } else {
                 console.error('Like button not found in DOM!');
             }
@@ -137,9 +138,6 @@ export default class Post {
             alert(error.message);
         }
     }
-    
-    
-    
     
     async toggleFollow() {
         const isFollowing = this.isFollowing;

@@ -1,5 +1,4 @@
 // server.js
-
 const express = require('express');
 const { MongoClient, GridFSBucket, ObjectId } = require('mongodb');
 const path = require('path');
@@ -280,6 +279,7 @@ app.post('/M00976018/contents', ensureLoggedIn, upload.array('media', 5), async 
         }
 
         let media = [];
+        let likedBy=[];
         if (req.files) {
             for (const file of req.files) {
                 // Upload file to GridFS
@@ -296,7 +296,7 @@ app.post('/M00976018/contents', ensureLoggedIn, upload.array('media', 5), async 
                     });
 
                     // Save the post to MongoDB
-                    const newPost = { title, content, username, media, createdAt: new Date() };
+                    const newPost = { title, content, username, media, createdAt: new Date(), likedBy };
                     await postsCollection.insertOne(newPost);
 
                     res.status(201).json({ message: 'Post created successfully', post: newPost });
